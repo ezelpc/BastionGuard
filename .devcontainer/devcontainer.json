@@ -1,0 +1,120 @@
+{
+  "name": "BastionGuard DevSecOps",
+  "dockerFile": "Dockerfile",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".",
+    "args": {}
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/git:1": {
+      "ppa": true
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next",
+        "ms-vscode.vscode-typescript-tslint-plugin",
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "ms-vscode-remote.remote-containers",
+        "ms-vscode-docker.remote-containers",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "humao.rest-client",
+        "mutantdino.resourcemonitor",
+        "hashicorp.terraform",
+        "aquasecurity.trivy",
+        "aquasecurity.defsec",
+        "sonarsource.sonarlint-vscode",
+        "ms-vscode.makefile-tools",
+        "GitHub.copilot-labs",
+        "ms-vscode.githubissues",
+        "ms-azuretools.vscode-docker",
+        "ms-vscode.remote-repositories"
+      ],
+      "settings": {
+        "[typescript]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.fixAll.eslint": true,
+            "source.fixAll": true
+          }
+        },
+        "[json]": {
+          "editor.defaultFormatter": "esbenp.prettier-vscode",
+          "editor.formatOnSave": true
+        },
+        "editor.formatOnPaste": true,
+        "editor.wordWrap": "on",
+        "files.autoSave": "afterDelay",
+        "files.autoSaveDelay": 1000,
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "sonarlint.ls.enabled": true,
+        "sonarlint.rules": {
+          "javascript:S1192": {
+            "level": "on"
+          }
+        },
+        "security.workspace.trust.untrustedFiles": "open"
+      }
+    }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create-command.sh && bash .devcontainer/setup-devsecops.sh",
+  "postStartCommand": "npm run dev 2>/dev/null || true",
+  "forwardPorts": [3000, 8080, 9090, 5432, 6379],
+  "portsAttributes": {
+    "3000": {
+      "label": "BastionGuard API",
+      "onAutoForward": "notify",
+      "protocol": "https"
+    },
+    "8080": {
+      "label": "Dev Server",
+      "onAutoForward": "notify"
+    },
+    "9090": {
+      "label": "Metrics/Prometheus",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    }
+  },
+  "mounts": [
+    "type=bind,source=${localEnv:HOME}/.ssh,target=/home/node/.ssh,readonly,bind-propagation=rprivate",
+    "type=bind,source=${localEnv:HOME}/.docker,target=/home/node/.docker,readonly,bind-propagation=rprivate"
+  ],
+  "runArgs": [
+    "--cap-drop=ALL",
+    "--cap-add=NET_BIND_SERVICE",
+    "--cap-add=SYS_PTRACE",
+    "--security-opt=no-new-privileges:true",
+    "--read-only",
+    "--tmpfs=/tmp",
+    "--tmpfs=/run"
+  ],
+  "remoteUser": "node",
+  "remoteEnv": {
+    "NODE_ENV": "development",
+    "DEBUG": "bastionguard:*",
+    "SCAN_ENABLED": "true"
+  },
+  "initializeCommand": "mkdir -p ${localEnv:HOME}/.docker ${localEnv:HOME}/.ssh",
+  "containerUser": "node",
+  "privileged": false
+}

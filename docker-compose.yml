@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  # BastionGuard main service
+  bastionguard:
+    build:
+      context: .
+      dockerfile: .devcontainer/Dockerfile
+    container_name: bastionguard-dev
+    environment:
+      NODE_ENV: development
+      DEBUG: bastionguard:*
+      LOG_LEVEL: debug
+    volumes:
+      - .:/workspace
+      - /workspace/node_modules
+      - ${HOME}/.kube:/home/node/.kube:ro
+      - ${HOME}/.docker:/home/node/.docker:ro
+      - ${HOME}/.ssh:/home/node/.ssh:ro
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+      - "9090:9090"
+    networks:
+      - bastionguard-network
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
+  # PostgreSQL para auditoría/logs (opcional)
+  postgres:
+    image: postgres:16-alpine
+    container_name: bastionguard-postgres
+    environment:
+      POSTGRES_USER: bastionguard
+      POSTGRES_PASSWORD: dev-password
+      POSTGRES_DB: bastionguard_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - bastionguard-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bastionguard"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis para caché/queue (opcional)
+  redis:
+    image: redis:7-alpine
+    container_name: bastionguard-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - bastionguard-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Prometheus para métricas (opcional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: bastionguard-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    networks:
+      - bastionguard-network
+    profiles:
+      - monitoring
+
+networks:
+  bastionguard-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:

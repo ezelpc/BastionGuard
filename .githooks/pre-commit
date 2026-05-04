@@ -1,0 +1,68 @@
+#!/bin/bash
+
+# Pre-commit hook para seguridad
+# Ejecuta verificaciones de seguridad antes de hacer commit
+
+set -e
+
+echo "🔒 Ejecutando verificaciones de seguridad..."
+
+# Colores
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+ERRORS=0
+
+# 1. Verificar que no hay secretos commiteados
+echo "🔍 Verificando secretos..."
+if git diff --cached | grep -iE '(password|secret|api.?key|token|credential)' | grep -v '.gitignore'; then
+  echo -e "${RED}✗ ¡Posibles secretos detectados!${NC}"
+  ERRORS=$((ERRORS + 1))
+else
+  echo -e "${GREEN}✓ No hay secretos detectados${NC}"
+fi
+
+# 2. Verificar archivos .env
+echo "🔍 Verificando archivos de entorno..."
+if git diff --cached --name-only | grep -E '\.env'; then
+  echo -e "${RED}✗ ¡Intento de commitear .env!${NC}"
+  ERRORS=$((ERRORS + 1))
+else
+  echo -e "${GREEN}✓ Archivos .env no incluidos${NC}"
+fi
+
+# 3. Ejecutar linting en archivos TypeScript
+echo "🔍 Ejecutando linting..."
+if git diff --cached --name-only | grep -E '\.ts$'; then
+  npm run lint --silent 2>/dev/null || {
+    echo -e "${YELLOW}⚠ Lint encontró problemas (no crítico)${NC}"
+  }
+  echo -e "${GREEN}✓ Linting completado${NC}"
+fi
+
+# 4. Ejecutar type check
+echo "🔍 Verificando tipos TypeScript..."
+npm run type-check --silent 2>/dev/null || {
+  echo -e "${RED}✗ Errores de tipo encontrados${NC}"
+  ERRORS=$((ERRORS + 1))
+}
+
+# 5. Verificar que no hay credenciales en archivos JSON
+echo "🔍 Verificando archivos de configuración..."
+for file in $(git diff --cached --name-only | grep -E '\.(json|yaml|yml)$'); do
+  if grep -iE '(password|secret|api.?key|token|credential).*=' "$file" 2>/dev/null; then
+    echo -e "${RED}✗ Posibles secretos en $file${NC}"
+    ERRORS=$((ERRORS + 1))
+  fi
+done
+
+if [ $ERRORS -eq 0 ]; then
+  echo -e "${GREEN}✓ Todas las verificaciones de seguridad pasaron${NC}"
+  exit 0
+else
+  echo -e "${RED}✗ Se encontraron $ERRORS problema(s) de seguridad${NC}"
+  echo -e "${YELLOW}Para hacer commit de todas formas, usa: git commit --no-verify${NC}"
+  exit 1
+fi

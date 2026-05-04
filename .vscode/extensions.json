@@ -1,0 +1,16 @@
+{
+  "recommendations": [
+    "ms-vscode.vscode-typescript-next",
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "ms-vscode-docker.remote-containers",
+    "ms-kubernetes-tools.vscode-kubernetes-tools",
+    "redhat.vscode-yaml",
+    "humao.rest-client",
+    "mutantdino.resourcemonitor",
+    "eamodio.gitlens",
+    "ms-vscode.makefile-tools",
+    "pranaygp.vscode-css-peek",
+    "ms-vscode-remote.remote-containers"
+  ]
+}
