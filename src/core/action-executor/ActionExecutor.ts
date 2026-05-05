@@ -1,4 +1,4 @@
-import { ActionName, ActionRequest, ActionResult, Provider } from "./types";
+import { ActionName, ActionRequest, ActionResult } from "./types";
 
 // ✅ Lo único que la IA puede pedir
 const ALLOWED_ACTIONS: Set<ActionName> = new Set([
@@ -12,9 +12,18 @@ const ALLOWED_ACTIONS: Set<ActionName> = new Set([
 
 // 🚫 Palabras prohibidas — si aparecen en params, se bloquea todo
 const FORBIDDEN_KEYWORDS = [
-  "delete", "drop", "remove", "destroy",
-  "purge", "force", "cascade", "truncate",
-  "terminate", "kill", "wipe", "flush",
+  "delete",
+  "drop",
+  "remove",
+  "destroy",
+  "purge",
+  "force",
+  "cascade",
+  "truncate",
+  "terminate",
+  "kill",
+  "wipe",
+  "flush",
 ];
 
 export class ActionExecutor {
@@ -22,8 +31,6 @@ export class ActionExecutor {
   private auditLog: ActionResult[] = [];
 
   constructor(dryRun = true) {
-    // Por defecto arranca en dryRun — nadie toca nada hasta que
-    // explícitamente se desactive en config de producción
     this.dryRun = dryRun;
   }
 
@@ -31,41 +38,36 @@ export class ActionExecutor {
     const timestamp = new Date().toISOString();
 
     // — Guardrail 1: acción en allowlist?
-    if (!ALLOWED_ACTIONS.has(request.action)) {
-      return this.blocked(request, timestamp,
-        `Acción '${request.action}' no está en la allowlist`
+    if (!ALLOWED_ACTIONS.has(request.actionName)) {
+      return this.blocked(
+        request,
+        timestamp,
+        `Acción '${request.actionName}' no está en la allowlist`
       );
     }
 
     // — Guardrail 2: params contienen palabras prohibidas?
     const paramsStr = JSON.stringify(request.params).toLowerCase();
-    const forbidden = FORBIDDEN_KEYWORDS.find(k => paramsStr.includes(k));
+    const forbidden = FORBIDDEN_KEYWORDS.find((k) => paramsStr.includes(k));
     if (forbidden) {
-      return this.blocked(request, timestamp,
-        `Params contienen keyword prohibido: '${forbidden}'`
-      );
+      return this.blocked(request, timestamp, `Params contienen keyword prohibido: '${forbidden}'`);
     }
 
-    // — Guardrail 3: solo la IA puede ejecutar, y en dryRun si no está configurado
+    // — Guardrail 3: dryRun activo?
     if (this.dryRun) {
       return this.simulatedResult(request, timestamp);
     }
 
-    // — Ejecutar en el provider correcto
     return this.dispatch(request, timestamp);
   }
 
-  private async dispatch(
-    request: ActionRequest,
-    timestamp: string
-  ): Promise<ActionResult> {
-    // Aquí conectaremos cada provider en pasos siguientes
+  private async dispatch(request: ActionRequest, timestamp: string): Promise<ActionResult> {
     const result: ActionResult = {
       success: true,
-      actionName: request.action,
+      actionName: request.actionName,
       executedAt: timestamp,
       dryRun: false,
-      details: `[${request.provider}] Ejecutando ${request.action}...`,
+      details: `[${request.provider}] Ejecutando ${request.actionName}...`,
     };
 
     this.auditLog.push(result);
@@ -73,36 +75,28 @@ export class ActionExecutor {
     return result;
   }
 
-  private blocked(
-    request: ActionRequest,
-    timestamp: string,
-    reason: string
-  ): ActionResult {
+  private blocked(request: ActionRequest, timestamp: string, reason: string): ActionResult {
     const result: ActionResult = {
       success: false,
-      actionName: request.action,
+      actionName: request.actionName,
       executedAt: timestamp,
       dryRun: this.dryRun,
       details: `BLOQUEADO — ${reason}`,
       error: reason,
     };
 
-    // Aunque sea bloqueado, se audita
     this.auditLog.push(result);
     console.warn(`[BLOCKED] tenant=${request.tenantId} — ${reason}`);
     return result;
   }
 
-  private simulatedResult(
-    request: ActionRequest,
-    timestamp: string
-  ): ActionResult {
+  private simulatedResult(request: ActionRequest, timestamp: string): ActionResult {
     const result: ActionResult = {
       success: true,
-      actionName: request.action,
+      actionName: request.actionName,
       executedAt: timestamp,
       dryRun: true,
-      details: `[DRY-RUN] Se hubiera ejecutado: ${request.action} en ${request.provider}`,
+      details: `[DRY-RUN] Se hubiera ejecutado: ${request.actionName} en ${request.provider}`,
     };
 
     this.auditLog.push(result);

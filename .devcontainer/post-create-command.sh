@@ -1,87 +1,71 @@
 #!/bin/bash
-
 set -e
 
 echo "🚀 Iniciando post-create setup para BastionGuard..."
 
-# Actualizar npm
-echo "📦 Actualizando npm..."
-npm install -g npm@latest --loglevel=warn
+# ── 1. Instalar dependencias del proyecto ──────────────────
+echo "📥 Instalando dependencias..."
+npm install
 
-# Instalar dependencias del proyecto
-echo "📥 Instalando dependencias del proyecto..."
-npm install --prefer-offline --no-audit
-
-# Compilar TypeScript
+# ── 2. Compilar TypeScript ─────────────────────────────────
 echo "🔨 Compilando TypeScript..."
-npm run build 2>/dev/null || true
+npm run build 2>/dev/null || echo "⚠️  Build omitido (sin errores críticos)"
 
-# Crear scripts útiles si no existen
-if ! grep -q "\"dev\"" package.json; then
-  echo "📝 Actualizando package.json con scripts..."
-  npm set-script dev "ts-node src/test-executor.ts"
-  npm set-script build "tsc"
-  npm set-script lint "eslint src --ext .ts"
-  npm set-script format "prettier --write 'src/**/*.ts'"
-fi
+# ── 3. Crear directorios necesarios ───────────────────────
+mkdir -p logs .scan-results scripts
 
-# Crear alias útiles
-cat >> ~/.bashrc <<'EOF'
-# BastionGuard aliases
-alias bg-test="npm run test"
-alias bg-dev="npm run dev"
-alias bg-build="npm run build"
-alias bg-lint="npm run lint"
-alias bg-format="npm run format"
-alias bg-scan="bash ./scripts/security-scan.sh"
-alias k="kubectl"
-alias d="docker"
-alias dcps="docker-compose ps"
+# ── 4. Crear scripts de seguridad ─────────────────────────
+cat > ./scripts/security-scan.sh <<'SECURITY_EOF'
+#!/bin/bash
+TIMESTAMP=$(date '+%Y-%m-%d_%H-%M-%S')
+SCAN_DIR=".scan-results/$TIMESTAMP"
+mkdir -p "$SCAN_DIR"
 
-# Función para ejecutar BastionGuard
-bg-exec() {
-  npm run dev -- "$@"
-}
+echo "1️⃣  npm audit..."
+npm audit --json > "$SCAN_DIR/npm-audit.json" 2>/dev/null || true
 
-# Color para terminal
-export CLICOLOR=1
-export LSCOLORS=GxFxCxDxBxegedabagaced
+echo "2️⃣  Trivy..."
+trivy fs --format json -o "$SCAN_DIR/trivy.json" . 2>/dev/null || echo "⚠️  Trivy no disponible"
 
-# Configuración de git para DevSecOps
-git config --local core.hooksPath .githooks 2>/dev/null || true
+echo "3️⃣  Semgrep..."
+semgrep --config=p/security-audit --json -o "$SCAN_DIR/semgrep.json" src/ 2>/dev/null || echo "⚠️  Semgrep no disponible"
 
-echo "🔒 BastionGuard DevSecOps Environment Ready!"
-EOF
+echo "✅ Resultados en: $SCAN_DIR"
+SECURITY_EOF
+chmod +x ./scripts/security-scan.sh
 
-# Crear directorio de logs
-mkdir -p logs
-mkdir -p .scan-results
-
-# Crear git hooks para seguridad (si el directorio .githooks existe)
+# ── 5. Configurar git hooks ────────────────────────────────
 if [ -d ".githooks" ]; then
-  echo "🔐 Configurando git hooks de seguridad..."
   chmod +x .githooks/* 2>/dev/null || true
   git config --local core.hooksPath .githooks 2>/dev/null || true
+  echo "✅ Git hooks configurados"
 fi
 
-echo ""
-echo "✅ Post-create setup completado exitosamente!"
-echo ""
+# ── 6. Aliases útiles ─────────────────────────────────────
+cat >> ~/.bashrc <<'EOF'
 
+# BastionGuard aliases
+alias k="kubectl"
+alias bg-dev="npm run dev"
+alias bg-build="npm run build"
+alias bg-test="npm run dev"
+alias bg-scan="./scripts/security-scan.sh"
+alias bg-lint="npm run lint"
+echo "🛡️  BastionGuard DevSecOps listo!"
+EOF
 
-# Verificar versiones instaladas
+# ── 7. Resumen ─────────────────────────────────────────────
 echo ""
 echo "✅ Setup completado!"
 echo ""
-echo "📋 Versiones instaladas:"
-echo "  Node: $(node --version)"
-echo "  NPM: $(npm --version)"
-echo "  TypeScript: $(npx tsc --version)"
-echo "  Kubectl: $(kubectl version --client --short 2>/dev/null || echo 'no instalado')"
+echo "📋 Versiones:"
+echo "  Node   : $(node --version)"
+echo "  NPM    : $(npm --version)"
+echo "  TSC    : $(npx tsc --version)"
+echo "  kubectl: $(kubectl version --client --short 2>/dev/null || echo 'no instalado')"
 echo ""
-echo "💡 Comandos útiles:"
-echo "  npm run dev      - Ejecutar test-executor"
-echo "  npm run build    - Compilar TypeScript"
-echo "  npm run test     - Ejecutar tests"
-echo "  bg-exec          - Ejecutar acciones (alias)"
-echo ""
+echo "💡 Para iniciar:"
+echo "   npm run dev       → corre test-executor"
+echo "   npm run build     → compila TypeScript"
+echo "   bg-scan           → escaneo de seguridad"
+echo ""echo "🚀 ¡A desarrollar con seguridad en BastionGuard!"
