@@ -25,7 +25,8 @@
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
+    "@anthropic-ai/sdk": "^0.93.0",
+    "dotenv": "^16.6.1",
     "express": "^5.2.1",
     "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
