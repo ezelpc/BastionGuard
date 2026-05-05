@@ -8,6 +8,6 @@ export interface IncomingAlert {
   severity: Severity;
   service: string;
   message: string;
-  reivedAt: string;
+  receivedAt: string;
   rawPayload: Record<string, unknown>;
 }
