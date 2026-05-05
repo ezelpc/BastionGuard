@@ -42,12 +42,16 @@ if git diff --cached --name-only | grep -E '\.ts$'; then
   echo -e "${GREEN}✓ Linting completado${NC}"
 fi
 
-# 4. Ejecutar type check
+# 4. Ejecutar type check (ignorar deprecation warnings de TS6)
 echo "🔍 Verificando tipos TypeScript..."
-npm run type-check --silent 2>/dev/null || {
+TYPE_ERRORS=$(npm run type-check --silent 2>&1 | grep "error TS" | grep -v "TS5101\|TS5107" || true)
+if [ -n "$TYPE_ERRORS" ]; then
   echo -e "${RED}✗ Errores de tipo encontrados${NC}"
+  echo "$TYPE_ERRORS"
   ERRORS=$((ERRORS + 1))
-}
+else
+  echo -e "${GREEN}✓ Tipos correctos${NC}"
+fi
 
 # 5. Verificar que no hay credenciales en archivos JSON
 echo "🔍 Verificando archivos de configuración..."

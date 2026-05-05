@@ -1,3 +1,4 @@
+import { ActionName } from "@core/action-executor/types";
 import { ActionExecutor } from "./core/action-executor/ActionExecutor";
 
 const executor = new ActionExecutor(true); // dryRun activado
@@ -25,7 +26,7 @@ async function run() {
 
   console.log("\n=== Test 3: Bloqueado por acción no en allowlist ===");
   const r3 = await executor.execute({
-    actionName: "delete_pod" as any,
+    actionName: "delete_pod" as ActionName,
     provider: "kubernetes",
     tenantId: "empresa-a",
     params: { pod: "payments-svc-1" },
