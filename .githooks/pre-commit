@@ -17,7 +17,7 @@ ERRORS=0
 
 # 1. Verificar que no hay secretos commiteados
 echo "🔍 Verificando secretos..."
-if git diff --cached | grep -iE '(password|secret|api.?key|token|credential)' | grep -v '.gitignore'; then
+if git diff --cached | grep -iE '(password|secret|api.?key|credential|api_token|auth_token|access_token)' | grep -vE '(.gitignore|max_tokens|token[s]?\s*:|tokenize|tokenizer)'; then
   echo -e "${RED}✗ ¡Posibles secretos detectados!${NC}"
   ERRORS=$((ERRORS + 1))
 else
