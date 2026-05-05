@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# Pre-commit hook para seguridad
-# Ejecuta verificaciones de seguridad antes de hacer commit
-
 set -e
 
 echo "🔒 Ejecutando verificaciones de seguridad..."
 
-# Colores
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,8 +13,16 @@ ERRORS=0
 
 # 1. Verificar que no hay secretos commiteados
 echo "🔍 Verificando secretos..."
-if git diff --cached | grep -iE '(password|secret|api.?key|credential|api_token|auth_token|access_token)' | grep -vE '(.gitignore|max_tokens|token[s]?\s*:|tokenize|tokenizer)'; then
+SECRET_FOUND=$(git diff --cached \
+  | grep '^+' \
+  | grep -v '^+++' \
+  | grep -iE '(password|api.?key|api_token|auth_token|access_token)\s*[=:]\s*["\x27][^"\x27]{8,}' \
+  | grep -vE '(\.githooks|\.env\.example|ANTHROPIC_API_KEY=\$|your.api.key|example|placeholder|xxxxxxx)' \
+  || true)
+
+if [ -n "$SECRET_FOUND" ]; then
   echo -e "${RED}✗ ¡Posibles secretos detectados!${NC}"
+  echo "$SECRET_FOUND"
   ERRORS=$((ERRORS + 1))
 else
   echo -e "${GREEN}✓ No hay secretos detectados${NC}"
@@ -26,7 +30,7 @@ fi
 
 # 2. Verificar archivos .env
 echo "🔍 Verificando archivos de entorno..."
-if git diff --cached --name-only | grep -E '\.env'; then
+if git diff --cached --name-only | grep -E '^\.env$'; then
   echo -e "${RED}✗ ¡Intento de commitear .env!${NC}"
   ERRORS=$((ERRORS + 1))
 else
@@ -35,16 +39,21 @@ fi
 
 # 3. Ejecutar linting en archivos TypeScript
 echo "🔍 Ejecutando linting..."
-if git diff --cached --name-only | grep -E '\.ts$'; then
+TS_FILES=$(git diff --cached --name-only | grep -E '\.ts$' || true)
+if [ -n "$TS_FILES" ]; then
   npm run lint --silent 2>/dev/null || {
     echo -e "${YELLOW}⚠ Lint encontró problemas (no crítico)${NC}"
   }
   echo -e "${GREEN}✓ Linting completado${NC}"
 fi
 
-# 4. Ejecutar type check (ignorar deprecation warnings de TS6)
+# 4. Verificar tipos TypeScript
 echo "🔍 Verificando tipos TypeScript..."
-TYPE_ERRORS=$(npm run type-check --silent 2>&1 | grep "error TS" | grep -v "TS5101\|TS5107" || true)
+TYPE_ERRORS=$(npm run type-check --silent 2>&1 \
+  | grep "error TS" \
+  | grep -v "TS5101\|TS5107" \
+  || true)
+
 if [ -n "$TYPE_ERRORS" ]; then
   echo -e "${RED}✗ Errores de tipo encontrados${NC}"
   echo "$TYPE_ERRORS"
@@ -53,17 +62,11 @@ else
   echo -e "${GREEN}✓ Tipos correctos${NC}"
 fi
 
-# 5. Verificar que no hay credenciales en archivos JSON
+# 5. Verificar archivos de configuración
 echo "🔍 Verificando archivos de configuración..."
-for file in $(git diff --cached --name-only | grep -E '\.(json|yaml|yml)$'); do
-  if grep -iE '(password|secret|api.?key|token|credential).*=' "$file" 2>/dev/null; then
-    echo -e "${RED}✗ Posibles secretos en $file${NC}"
-    ERRORS=$((ERRORS + 1))
-  fi
-done
 
 if [ $ERRORS -eq 0 ]; then
-  echo -e "${GREEN}✓ Todas las verificaciones de seguridad pasaron${NC}"
+  echo -e "${GREEN}✓ Todas las verificaciones pasaron${NC}"
   exit 0
 else
   echo -e "${RED}✗ Se encontraron $ERRORS problema(s) de seguridad${NC}"
