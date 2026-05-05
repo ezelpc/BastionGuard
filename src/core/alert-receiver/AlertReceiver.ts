@@ -6,14 +6,14 @@ export class AlertReceiver {
   private app = express();
   private normalizer = new AlertNormalizer();
   private alerts: IncomingAlert[] = [];
-  private onAlertCallback?: (alert: IncomingAlert) => void;
+  private onAlertCallback?: (alert: IncomingAlert) => void | Promise<void>;
 
   public constructor(private port: number = 3000) {
     this.app.use(express.json());
     this.setupRoutes();
   }
 
-  public onAlert(callback: (alert: IncomingAlert) => void): void {
+  public onAlert(callback: (alert: IncomingAlert) => void | Promise<void>): void {
     this.onAlertCallback = callback;
   }
 
@@ -55,7 +55,12 @@ export class AlertReceiver {
         });
 
         if (this.onAlertCallback) {
-          this.onAlertCallback(alert);
+          console.log(`[ALERT] Disparando pipeline...`);
+          Promise.resolve(this.onAlertCallback(alert)).catch((err) => {
+            console.error(`[ALERT] Error en pipeline:`, err);
+          });
+        } else {
+          console.warn(`[ALERT] No hay callback registrado`);
         }
 
         res.status(200).json({ received: true, alertId: alert.id });
