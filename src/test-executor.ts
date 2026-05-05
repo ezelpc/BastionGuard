@@ -1,41 +1,9 @@
-import { ActionName } from "@core/action-executor/types";
-import { ActionExecutor } from "./core/action-executor/ActionExecutor";
+import { AlertReceiver } from "./core/alert-receiver/AlertReceiver";
 
-const executor = new ActionExecutor(true); // dryRun activado
+const receiver = new AlertReceiver(3000);
 
-async function run() {
-  console.log("\n=== Test 1: Acción válida ===");
-  const r1 = await executor.execute({
-    actionName: "restart_service",
-    provider: "kubernetes",
-    tenantId: "empresa-a",
-    params: { service: "api-gateway", namespace: "production" },
-    requestedBy: "ai-agent",
-  });
-  console.log(r1);
+receiver.onAlert((alert) => {
+  console.log("\n🚨 Nueva alerta procesada:", alert);
+});
 
-  console.log("\n=== Test 2: Bloqueado por keyword prohibido ===");
-  const r2 = await executor.execute({
-    actionName: "restart_service",
-    provider: "kubernetes",
-    tenantId: "empresa-a",
-    params: { service: "api-gateway", force_delete: true },
-    requestedBy: "ai-agent",
-  });
-  console.log(r2);
-
-  console.log("\n=== Test 3: Bloqueado por acción no en allowlist ===");
-  const r3 = await executor.execute({
-    actionName: "delete_pod" as ActionName,
-    provider: "kubernetes",
-    tenantId: "empresa-a",
-    params: { pod: "payments-svc-1" },
-    requestedBy: "ai-agent",
-  });
-  console.log(r3);
-
-  console.log("\n=== Audit Log completo ===");
-  console.log(executor.getAuditLog());
-}
-
-run();
+receiver.start();
