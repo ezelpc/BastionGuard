@@ -76,4 +76,57 @@ export class AuthManager {
       return null;
     }
   }
+
+  public async getUsers(tenantId: string): Promise<User[]> {
+    const pool = AuditLogger.getInstance().getPool();
+    if (!pool) return [];
+    
+    try {
+      const query = tenantId === "all" 
+        ? `SELECT id, tenant_id, email, role FROM users`
+        : `SELECT id, tenant_id, email, role FROM users WHERE tenant_id = $1`;
+      const params = tenantId === "all" ? [] : [tenantId];
+      const res = await pool.query(query, params);
+      return res.rows.map(r => ({ id: r.id, tenantId: r.tenant_id, email: r.email, role: r.role }));
+    } catch {
+      return [];
+    }
+  }
+
+  public async createUser(tenantId: string, email: string, passwordPlain: string, role: string): Promise<boolean> {
+    const pool = AuditLogger.getInstance().getPool();
+    if (!pool) return false;
+
+    try {
+      const hash = await bcrypt.hash(passwordPlain, 10);
+      const id = require("crypto").randomUUID();
+      await pool.query(
+        `INSERT INTO users (id, tenant_id, email, password_hash, role) VALUES ($1, $2, $3, $4, $5)`,
+        [id, tenantId, email, hash, role]
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  public async deleteUser(tenantId: string, userId: string): Promise<boolean> {
+    const pool = AuditLogger.getInstance().getPool();
+    if (!pool) return false;
+
+    try {
+      // Evitar que el admin global se borre accidentalmente
+      if (userId === "00000000-0000-0000-0000-000000000000") return false;
+      
+      const query = tenantId === "all" 
+        ? `DELETE FROM users WHERE id = $1`
+        : `DELETE FROM users WHERE id = $1 AND tenant_id = $2`;
+      const params = tenantId === "all" ? [userId] : [userId, tenantId];
+      
+      const res = await pool.query(query, params);
+      return (res.rowCount ?? 0) > 0;
+    } catch {
+      return false;
+    }
+  }
 }

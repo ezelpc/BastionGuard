@@ -66,11 +66,25 @@ export class WebServer {
 
       const token = authHeader.split(" ")[1];
       try {
-        jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key-change-in-production");
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key-change-in-production");
+        (req as any).user = decoded;
         next();
       } catch (err) {
         res.status(403).json({ error: "Forbidden: Invalid token" });
       }
+    };
+
+    const requireAdmin = (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
+      const user = (req as any).user;
+      if (!user || user.role !== "admin") {
+        res.status(403).json({ error: "Forbidden: Requiere rol de administrador" });
+        return;
+      }
+      next();
     };
 
     this.app.get("/api/events", authMiddleware, (_req, res) => {
@@ -136,7 +150,7 @@ export class WebServer {
       res.json(schedule);
     });
 
-    this.app.post("/api/tenants/:tenantId/oncall", authMiddleware, async (req, res) => {
+    this.app.post("/api/tenants/:tenantId/oncall", authMiddleware, requireAdmin, async (req, res) => {
       const tenantId = req.params.tenantId as string;
       const { engineerName, phoneNumber, shiftStart, shiftEnd, isActive } = req.body;
       const shift = await onCallManager.addShift({
@@ -149,6 +163,43 @@ export class WebServer {
       });
       if (shift) res.json(shift);
       else res.status(500).json({ error: "Failed to add shift" });
+    });
+
+    // Rutas de Usuarios
+    this.app.get("/api/users", authMiddleware, requireAdmin, async (req, res) => {
+      const tenantId = (req as any).user.tenantId; // Puede ser "all" para admin global
+      const users = await authManager.getUsers(tenantId);
+      res.json(users);
+    });
+
+    this.app.post("/api/users", authMiddleware, requireAdmin, async (req, res) => {
+      const { email, password, role } = req.body;
+      let targetTenant = req.body.tenantId;
+      const adminTenant = (req as any).user.tenantId;
+
+      if (adminTenant !== "all") {
+        targetTenant = adminTenant; // Forzar al tenant del admin actual
+      } else if (!targetTenant) {
+        targetTenant = "all";
+      }
+
+      if (!email || !password || !role) {
+        res.status(400).json({ error: "Faltan parámetros" });
+        return;
+      }
+
+      const success = await authManager.createUser(targetTenant, email, password, role);
+      if (success) res.json({ success: true });
+      else res.status(500).json({ error: "Error creando usuario" });
+    });
+
+    this.app.delete("/api/users/:userId", authMiddleware, requireAdmin, async (req, res) => {
+      const userId = req.params.userId;
+      const adminTenant = (req as any).user.tenantId;
+      
+      const success = await authManager.deleteUser(adminTenant, userId);
+      if (success) res.json({ success: true });
+      else res.status(500).json({ error: "Error eliminando usuario o permisos insuficientes" });
     });
 
     // Trigger de demo — solo en modo no-producción
