@@ -13,14 +13,14 @@ import { AlertNormalizer } from "./core/alert-receiver/AlertNormalizer";
 
 const PORT = parseInt(process.env.API_PORT ?? "3000");
 const webServer = new WebServer(PORT);
-const receiver = new AlertReceiver(PORT, webServer.getExpressApp());
+const tenantConfig = new TenantConfigManager(
+  process.env.TENANTS_CONFIG ?? "src/config/tenants.yml"
+);
+const receiver = new AlertReceiver(PORT, webServer.getExpressApp(), tenantConfig);
 const diagnostic = new DiagnosticEngine();
 const agent = new AIDecisionAgent();
 const executor = new ActionExecutor(true);
 const escalation = new EscalationManager();
-const tenantConfig = new TenantConfigManager(
-  process.env.TENANTS_CONFIG ?? "src/config/tenants.yml"
-);
 const audit = AuditLogger.getInstance();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));

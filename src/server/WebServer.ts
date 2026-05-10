@@ -2,9 +2,11 @@ import express from "express";
 import { createServer } from "http";
 import { Server as SocketServer } from "socket.io";
 import path from "path";
+import jwt from "jsonwebtoken";
 import { IncomingAlert } from "../core/alert-receiver/types";
 import { DiagnosticReport } from "../core/diagnostic-engine/types";
 import { AIDecision } from "../core/ai-agent/types";
+import { PostMortemGenerator } from "../core/ai-agent/PostMortemGenerator";
 import { ActionResult } from "../core/action-executor/types";
 import { AuditLogger } from "../core/audit/AuditLogger";
 import { TenantConfig } from "../config/types";
@@ -48,12 +50,31 @@ export class WebServer {
       });
     });
 
-    this.app.get("/api/events", (_req, res) => {
+    const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+      // Desactivado en desarrollo o si no hay JWT_SECRET configurado
+      if (process.env.NODE_ENV !== "production") return next();
+      
+      const authHeader = req.headers.authorization;
+      if (!authHeader?.startsWith("Bearer ")) {
+        res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
+        return;
+      }
+      
+      const token = authHeader.split(" ")[1];
+      try {
+        jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key-change-in-production");
+        next();
+      } catch (err) {
+        res.status(403).json({ error: "Forbidden: Invalid token" });
+      }
+    };
+
+    this.app.get("/api/events", authMiddleware, (_req, res) => {
       res.json(this.events.slice(-100));
     });
 
     // Tenants cargados — para el dashboard
-    this.app.get("/api/tenants", (_req, res) => {
+    this.app.get("/api/tenants", authMiddleware, (_req, res) => {
       res.json(
         this.tenants.map((t) => ({
           id: t.id,
@@ -66,13 +87,21 @@ export class WebServer {
     });
 
     // Audit log persistido
-    this.app.get("/api/audit", (_req, res) => {
+    this.app.get("/api/audit", authMiddleware, (_req, res) => {
       res.json(this.auditLogger.readLast(100));
     });
 
     // Resumen estadístico
-    this.app.get("/api/summary", (_req, res) => {
+    this.app.get("/api/summary", authMiddleware, (_req, res) => {
       res.json(this.auditLogger.summary());
+    });
+
+    const postMortemGen = new PostMortemGenerator();
+    this.app.post("/api/tenants/:tenantId/services/:serviceName/post-mortem", authMiddleware, async (req, res) => {
+      const tenantId = req.params.tenantId as string;
+      const serviceName = req.params.serviceName as string;
+      const rca = await postMortemGen.generate(serviceName, tenantId);
+      res.json({ markdown: rca });
     });
 
     // Trigger de demo — solo en modo no-producción

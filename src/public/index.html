@@ -301,6 +301,9 @@
     <button id="btn-demo" onclick="triggerDemo()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#00c3ff,#00ffa3);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Dispara una alerta de prueba">
       ⚡ Simular incidente
     </button>
+    <button id="btn-rca" onclick="triggerRCA()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#a78bfa,#c084fc);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Generar RCA Post-Mortem de IA">
+      📝 Generar RCA (IA)
+    </button>
     <select id="tenant-filter" onchange="filterByTenant()" style="margin-right:16px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e2e8f0;font-size:12px">
       <option value="all">Todos los tenants</option>
     </select>
@@ -413,6 +416,34 @@
     fetch('/api/demo/trigger', { method: 'POST' })
       .then(() => setTimeout(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; }, 2000))
       .catch(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; });
+  }
+
+  // Botón RCA
+  function triggerRCA() {
+    const serviceName = prompt("Ingrese el nombre del servicio para generar el RCA (ej. api-gateway):");
+    if (!serviceName) return;
+    const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a):") : activeTenant;
+    if (!tenantId) return;
+
+    const btn = document.getElementById('btn-rca');
+    btn.textContent = '⏳ Generando...';
+    btn.disabled = true;
+
+    fetch(`/api/tenants/${tenantId}/services/${serviceName}/post-mortem`, { method: 'POST' })
+      .then(r => r.json())
+      .then(res => {
+         btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false;
+         if (res.markdown) {
+           alert("Post-Mortem Generado:\\n\\n" + res.markdown.substring(0, 500) + "...\\n\\n(Revisa la consola para ver el Markdown completo)");
+           console.log("\\n=== POST-MORTEM GENERADO ===\\n" + res.markdown + "\\n===========================\\n");
+         } else {
+           alert("Error: " + (res.error || "No se pudo generar"));
+         }
+      })
+      .catch((e) => { 
+        alert("Error de conexión");
+        btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false; 
+      });
   }
 
   // Metrics state

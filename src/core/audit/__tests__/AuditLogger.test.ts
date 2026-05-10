@@ -7,6 +7,12 @@ jest.mock("fs", () => ({
   readFileSync: jest.fn(() => ""),
 }));
 
+jest.mock("pg", () => ({
+  Pool: jest.fn(() => ({
+    query: jest.fn().mockResolvedValue({ rows: [] }),
+  })),
+}), { virtual: true });
+
 describe("AuditLogger", () => {
   beforeEach(() => {
     jest.clearAllMocks();

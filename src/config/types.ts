@@ -19,6 +19,7 @@ export interface TenantConfig {
   id: string;
   name: string;
   enabled: boolean;
+  apiKey?: string;
   providers: ProviderConfig[];
   allowedActions: ActionPolicy[];
   escalationTargets: {

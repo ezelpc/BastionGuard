@@ -54,6 +54,14 @@ export class TenantConfigManager {
     return Array.from(this.tenants.values()).filter((t) => t.enabled);
   }
 
+  public getTenantByApiKey(apiKey: string): TenantConfig | null {
+    if (!apiKey) return null;
+    const tenant = Array.from(this.tenants.values()).find(
+      (t) => t.enabled && t.apiKey === apiKey
+    );
+    return tenant ?? null;
+  }
+
   public isActionAllowed(tenantId: string, actionName: string): boolean {
     try {
       const tenant = this.getTenant(tenantId);

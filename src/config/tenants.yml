@@ -2,6 +2,7 @@ tenants:
   - id: empresa-a
     name: Empresa A
     enabled: true
+    apiKey: "placeholder-tenant-a"
     providers:
       - name: kubernetes
         enabled: true
@@ -55,6 +56,7 @@ tenants:
   - id: empresa-b
     name: Empresa B
     enabled: true
+    apiKey: "placeholder-tenant-b"
     providers:
       - name: ecs
         enabled: true

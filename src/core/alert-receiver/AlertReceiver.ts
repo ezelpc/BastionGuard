@@ -1,6 +1,7 @@
 import express, { Application, Request, Response } from "express";
 import { AlertNormalizer } from "./AlertNormalizer";
 import { AlertSource, IncomingAlert } from "./types";
+import { TenantConfigManager } from "../../config/TenantConfigManager";
 
 export class AlertReceiver {
   private app: Application;
@@ -10,7 +11,8 @@ export class AlertReceiver {
 
   public constructor(
     private port: number = 3000,
-    existingApp?: Application
+    existingApp?: Application,
+    private tenantConfig?: TenantConfigManager
   ) {
     this.app = existingApp ?? express();
     if (!existingApp) {
@@ -46,6 +48,18 @@ export class AlertReceiver {
     });
 
     this.app.post("/webhook/:source", (req: Request, res: Response) => {
+      let authorizedTenantId: string | undefined;
+
+      if (this.tenantConfig && process.env.NODE_ENV === "production") {
+        const apiKey = req.headers["x-api-key"] as string;
+        const tenant = this.tenantConfig.getTenantByApiKey(apiKey);
+        if (!tenant) {
+          res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+          return;
+        }
+        authorizedTenantId = tenant.id;
+      }
+
       const source = req.params.source as AlertSource;
       const payload = req.body as Record<string, unknown>;
 
@@ -53,6 +67,9 @@ export class AlertReceiver {
 
       try {
         const alert = this.normalizer.normalize(source, payload);
+        if (authorizedTenantId) {
+          (alert as any).tenantId = authorizedTenantId;
+        }
         this.alerts.push(alert);
 
         console.log(`[ALERT] Normalizado:`, {
