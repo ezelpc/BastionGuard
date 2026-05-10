@@ -10,6 +10,7 @@ import { PostMortemGenerator } from "../core/ai-agent/PostMortemGenerator";
 import { ActionResult } from "../core/action-executor/types";
 import { AuditLogger } from "../core/audit/AuditLogger";
 import { TenantConfig } from "../config/types";
+import { OnCallManager } from "../core/escalation/OnCallManager";
 
 export interface PipelineEvent {
   id: string;
@@ -111,6 +112,28 @@ export class WebServer {
         res.json({ markdown: rca });
       }
     );
+
+    const onCallManager = new OnCallManager();
+    this.app.get("/api/tenants/:tenantId/oncall", authMiddleware, async (req, res) => {
+      const tenantId = req.params.tenantId as string;
+      const schedule = await onCallManager.getSchedule(tenantId);
+      res.json(schedule);
+    });
+
+    this.app.post("/api/tenants/:tenantId/oncall", authMiddleware, async (req, res) => {
+      const tenantId = req.params.tenantId as string;
+      const { engineerName, phoneNumber, shiftStart, shiftEnd, isActive } = req.body;
+      const shift = await onCallManager.addShift({
+        tenantId,
+        engineerName,
+        phoneNumber,
+        shiftStart,
+        shiftEnd,
+        isActive: isActive !== false
+      });
+      if (shift) res.json(shift);
+      else res.status(500).json({ error: "Failed to add shift" });
+    });
 
     // Trigger de demo — solo en modo no-producción
     this.app.all("/api/demo/trigger", async (_req, res) => {

@@ -304,6 +304,9 @@
     <button id="btn-rca" onclick="triggerRCA()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#a78bfa,#c084fc);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Generar RCA Post-Mortem de IA">
       📝 Generar RCA (IA)
     </button>
+    <button id="btn-oncall" onclick="manageOnCall()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Gestionar Guardias (On-Call)">
+      📞 Guardias
+    </button>
     <select id="tenant-filter" onchange="filterByTenant()" style="margin-right:16px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e2e8f0;font-size:12px">
       <option value="all">Todos los tenants</option>
     </select>
@@ -443,6 +446,36 @@
       .catch((e) => { 
         alert("Error de conexión");
         btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false; 
+      });
+  }
+
+  // Gestión de Guardias
+  function manageOnCall() {
+    const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a) para ver su calendario de guardias:") : activeTenant;
+    if (!tenantId) return;
+
+    fetch(`/api/tenants/${tenantId}/oncall`)
+      .then(r => r.json())
+      .then(schedule => {
+        let text = `Calendario de Guardias para ${tenantId}:\\n\\n`;
+        if (schedule.length === 0) text += "No hay turnos programados.\\n";
+        else schedule.forEach(s => text += `- ${s.engineerName} (${s.phoneNumber}) | Activo: ${s.isActive}\\n`);
+        
+        text += "\\n¿Deseas agregar un nuevo turno de guardia AHORA MISMO? (Aceptar = Sí, Cancelar = No)";
+        if (confirm(text)) {
+          const name = prompt("Nombre del Ingeniero:");
+          const phone = prompt("Teléfono (formato E.164, ej: +123456789):");
+          if (name && phone) {
+            const start = new Date().toISOString();
+            const end = new Date(Date.now() + 86400000).toISOString(); // 24h
+            fetch(`/api/tenants/${tenantId}/oncall`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ engineerName: name, phoneNumber: phone, shiftStart: start, shiftEnd: end, isActive: true })
+            }).then(() => alert("¡Turno guardado con éxito! BastionGuard le llamará por Twilio si hay una emergencia."))
+              .catch(() => alert("Error al guardar turno."));
+          }
+        }
       });
   }
 

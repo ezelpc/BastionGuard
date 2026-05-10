@@ -2,13 +2,19 @@ import { randomUUID } from "crypto";
 import { AIDecision } from "../ai-agent/types";
 import { DiagnosticReport } from "../diagnostic-engine/types";
 import { EscalationEvent } from "./types";
+import { OnCallManager } from "./OnCallManager";
+import { TwilioClient } from "./TwilioClient";
 
 export class EscalationManager {
   private history: EscalationEvent[] = [];
   private slackWebhookUrl?: string;
+  private onCallManager: OnCallManager;
+  private twilioClient: TwilioClient;
 
   public constructor() {
     this.slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+    this.onCallManager = new OnCallManager();
+    this.twilioClient = new TwilioClient();
   }
 
   public async escalate(
@@ -38,6 +44,16 @@ export class EscalationManager {
     } else {
       console.log(`\n⚠️  SLACK_WEBHOOK_URL no configurado — simulando envío:`);
       console.log(`\n${message}`);
+    }
+
+    // Call the On-Call Engineer via Twilio
+    const onCallEngineer = await this.onCallManager.getCurrentOnCall(tenantId);
+    if (onCallEngineer) {
+      console.log(`\n📞 [TWILIO] Contactando al guardia actual: ${onCallEngineer.engineerName}`);
+      const voiceMessage = `Hola ${onCallEngineer.engineerName}, soy Bastion Guard. Se ha detectado una alerta crítica en el servicio ${report.service.name}. El motivo es ${decision.escalationReason}. Por favor, revisa el panel de control de inmediato.`;
+      await this.twilioClient.makeCall(onCallEngineer.phoneNumber, voiceMessage);
+    } else {
+      console.log(`\n📞 [TWILIO] Ningún ingeniero de guardia activo encontrado para el tenant ${tenantId}.`);
     }
 
     this.history.push(event);

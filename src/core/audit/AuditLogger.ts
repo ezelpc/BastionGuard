@@ -64,11 +64,22 @@ export class AuditLogger {
           label VARCHAR(255) NOT NULL,
           success BOOLEAN NOT NULL,
           confidence REAL,
-          details TEXT,
           dry_run BOOLEAN
         );
       `);
-      console.log(`[AUDIT] Tabla de PostgreSQL verificada/creada.`);
+
+      await this.pool?.query(`
+        CREATE TABLE IF NOT EXISTS oncall_schedules (
+          id UUID PRIMARY KEY,
+          tenant_id VARCHAR(255) NOT NULL,
+          engineer_name VARCHAR(255) NOT NULL,
+          phone_number VARCHAR(50) NOT NULL,
+          shift_start TIMESTAMP NOT NULL,
+          shift_end TIMESTAMP NOT NULL,
+          is_active BOOLEAN DEFAULT true
+        );
+      `);
+      console.log(`[AUDIT] Tablas de PostgreSQL verificadas/creadas.`);
 
       // Load recent logs from DB into cache
       const res = await this.pool?.query(
@@ -101,6 +112,10 @@ export class AuditLogger {
       AuditLogger.instance = new AuditLogger();
     }
     return AuditLogger.instance;
+  }
+
+  public getPool(): Pool | undefined {
+    return this.pool;
   }
 
   public append(
