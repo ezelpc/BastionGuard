@@ -3,6 +3,10 @@ import { DiagnosticReport } from "../../diagnostic-engine/types";
 import { AIDecision } from "../../ai-agent/types";
 import { IncomingAlert } from "../../alert-receiver/types";
 
+// Mock dependencies that might not be installed in the test environment
+jest.mock("pg", () => ({ Pool: jest.fn() }), { virtual: true });
+jest.mock("twilio", () => jest.fn(), { virtual: true });
+
 describe("EscalationManager", () => {
   let manager: EscalationManager;
 
