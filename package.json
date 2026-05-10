@@ -44,6 +44,7 @@
     "yaml": "^2.4.2"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "@types/dockerode": "^4.0.1",
     "@types/express": "^5.0.6",
     "@types/jest": "^29.5.11",
