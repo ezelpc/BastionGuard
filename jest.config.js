@@ -31,6 +31,7 @@ module.exports = {
     // Server bootstrap and manual entry-point scripts are integration-level
     "!src/server/**",
     "!src/test-executor.ts",
+    "!src/demo.ts",
   ],
   coverageThreshold: {
     global: {
