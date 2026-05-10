@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node src/test-executor.ts",
+    "dev:mock": "AI_MOCK=true ts-node src/test-executor.ts",
     "dev:watch": "nodemon --exec ts-node src/test-executor.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",

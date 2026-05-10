@@ -6,6 +6,8 @@ import { IncomingAlert } from "../core/alert-receiver/types";
 import { DiagnosticReport } from "../core/diagnostic-engine/types";
 import { AIDecision } from "../core/ai-agent/types";
 import { ActionResult } from "../core/action-executor/types";
+import { AuditLogger } from "../core/audit/AuditLogger";
+import { TenantConfig } from "../config/types";
 
 export interface PipelineEvent {
   id: string;
@@ -22,6 +24,9 @@ export class WebServer {
     cors: { origin: "*" },
   });
   private events: PipelineEvent[] = [];
+  private auditLogger = AuditLogger.getInstance();
+  private tenants: TenantConfig[] = [];
+  private demoTrigger?: () => Promise<void>;
 
   public constructor(private port: number = 3000) {
     this.setupMiddleware();
@@ -36,11 +41,53 @@ export class WebServer {
 
   private setupRoutes(): void {
     this.app.get("/health", (_req, res) => {
-      res.json({ status: "ok", events: this.events.length });
+      res.json({
+        status: "ok",
+        events: this.events.length,
+        ...this.auditLogger.summary(),
+      });
     });
 
     this.app.get("/api/events", (_req, res) => {
       res.json(this.events.slice(-100));
+    });
+
+    // Tenants cargados — para el dashboard
+    this.app.get("/api/tenants", (_req, res) => {
+      res.json(
+        this.tenants.map((t) => ({
+          id: t.id,
+          name: t.name,
+          enabled: t.enabled,
+          providers: t.providers.filter((p) => p.enabled).map((p) => p.name),
+          minConfidence: t.aiThreshold.minConfidence,
+        }))
+      );
+    });
+
+    // Audit log persistido
+    this.app.get("/api/audit", (_req, res) => {
+      res.json(this.auditLogger.readLast(100));
+    });
+
+    // Resumen estadístico
+    this.app.get("/api/summary", (_req, res) => {
+      res.json(this.auditLogger.summary());
+    });
+
+    // Trigger de demo — solo en modo no-producción
+    this.app.post("/api/demo/trigger", async (_req, res) => {
+      if (process.env.NODE_ENV === "production") {
+        res.status(403).json({ error: "No disponible en producción" });
+        return;
+      }
+      if (!this.demoTrigger) {
+        res.status(503).json({ error: "Demo trigger no registrado" });
+        return;
+      }
+      res.json({ ok: true, message: "Disparando alerta de demo..." });
+      // Ejecutar asíncronamente para no bloquear la respuesta HTTP
+      this.demoTrigger().catch((err) => console.error("[DEMO]" , err));
     });
   }
 
@@ -115,6 +162,16 @@ export class WebServer {
     };
     this.events.push(event);
     this.io.emit("pipeline_event", event);
+  }
+
+  /** Registrar función de disparo de demo desde test-executor */
+  public registerDemoTrigger(fn: () => Promise<void>): void {
+    this.demoTrigger = fn;
+  }
+
+  /** Registrar tenants cargados para exponerlos via API */
+  public registerTenants(tenants: TenantConfig[]): void {
+    this.tenants = tenants;
   }
 
   public getExpressApp(): express.Application {

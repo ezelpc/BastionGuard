@@ -41,6 +41,7 @@ coverage/
 # Runtime data
 .cache/
 .tmp/
+data/
 
 # Local dev container
 .devcontainer/node_modules/

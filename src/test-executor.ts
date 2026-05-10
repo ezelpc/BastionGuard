@@ -8,6 +8,7 @@ import { ActionExecutor } from "./core/action-executor/ActionExecutor";
 import { EscalationManager } from "./core/escalation/EscalationManager";
 import { TenantConfigManager } from "./config/TenantConfigManager";
 import { WebServer } from "./server/WebServer";
+import { AuditLogger } from "./core/audit/AuditLogger";
 
 process.on("uncaughtException", (err) => {
   console.error("❌ Error no manejado:", err);
@@ -24,7 +25,10 @@ const diagnostic = new DiagnosticEngine();
 const agent = new AIDecisionAgent();
 const executor = new ActionExecutor(true);
 const escalation = new EscalationManager();
-const tenantConfig = new TenantConfigManager();
+const tenantConfig = new TenantConfigManager(
+  process.env.TENANTS_CONFIG ?? "src/config/tenants.yml"
+);
+const audit = AuditLogger.getInstance();
 
 receiver.onAlert(async (alert) => {
   const TENANT_ID = "empresa-a";
@@ -84,6 +88,13 @@ receiver.onAlert(async (alert) => {
       report.service.name
     );
     await escalation.escalate(TENANT_ID, report, decision);
+    audit.append("escalation", {
+      tenantId: TENANT_ID,
+      service: report.service.name,
+      label: decision.escalationReason ?? "Confianza insuficiente",
+      success: false,
+      confidence: decision.confidence,
+    });
     return;
   }
 
@@ -104,9 +115,26 @@ receiver.onAlert(async (alert) => {
     if (result.success) {
       console.log(`\n✅ Resuelto automáticamente`);
       console.log(`   ${result.details}`);
+      audit.append("action", {
+        tenantId: TENANT_ID,
+        service: report.service.name,
+        label: result.actionName,
+        success: true,
+        confidence: decision.confidence,
+        details: result.details,
+        dryRun: result.dryRun,
+      });
     } else {
       console.log(`\n❌ Acción fallida — escalando`);
       webServer.emitEscalation(TENANT_ID, result.error ?? "Error desconocido", report.service.name);
+      audit.append("action", {
+        tenantId: TENANT_ID,
+        service: report.service.name,
+        label: result.actionName,
+        success: false,
+        details: result.error,
+        dryRun: result.dryRun,
+      });
       await escalation.escalate(TENANT_ID, report, {
         ...decision,
         escalate: true,
@@ -122,8 +150,33 @@ receiver.onAlert(async (alert) => {
 (async () => {
   try {
     await tenantConfig.load();
+
+    // Exponer tenants en la API del dashboard
+    webServer.registerTenants(tenantConfig.getAllTenants());
+
+    // Registrar función de demo para el botón del dashboard
+    webServer.registerDemoTrigger(async () => {
+      const { AlertNormalizer } = await import("./core/alert-receiver/AlertNormalizer");
+      const normalizer = new AlertNormalizer();
+      const alert = normalizer.normalize("prometheus", {
+        alerts: [
+          {
+            status: "firing",
+            labels: { severity: "critical", job: "api-gateway" },
+            annotations: { summary: "Latencia alta — disparo desde dashboard" },
+          },
+        ],
+      });
+      // Inyectar en el pipeline como si fuera un webhook real
+      receiver["alerts"].push(alert);
+      const cb = receiver["onAlertCallback"];
+      if (cb) await cb(alert);
+    });
+
     await webServer.start();
     console.log("✅ BastionGuard iniciado correctamente\n");
+    console.log(`   Dashboard: http://localhost:${PORT}`);
+    console.log(`   Demo:      POST http://localhost:${PORT}/api/demo/trigger\n`);
   } catch (err) {
     console.error("❌ Error iniciando BastionGuard:", err);
     process.exit(1);

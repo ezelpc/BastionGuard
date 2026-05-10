@@ -298,6 +298,12 @@
     </div>
   </div>
   <div class="status-badge">
+    <button id="btn-demo" onclick="triggerDemo()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#00c3ff,#00ffa3);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Dispara una alerta de prueba">
+      ⚡ Simular incidente
+    </button>
+    <select id="tenant-filter" onchange="filterByTenant()" style="margin-right:16px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e2e8f0;font-size:12px">
+      <option value="all">Todos los tenants</option>
+    </select>
     <div class="dot" id="conn-dot" style="background:#ff4444;box-shadow:0 0 8px #ff4444"></div>
     <span id="conn-status">Conectando...</span>
     <span style="margin-left:12px;font-family:monospace" id="clock"></span>
@@ -350,14 +356,7 @@
     <div class="sidebar-section">
       <div class="sidebar-title">Tenants activos</div>
       <div id="tenants-container">
-        <div class="tenant-card">
-          <div class="tenant-name">Empresa A</div>
-          <div class="tenant-meta">Kubernetes · Confianza mín: 80%</div>
-        </div>
-        <div class="tenant-card">
-          <div class="tenant-name">Empresa B</div>
-          <div class="tenant-meta">ECS + Docker Swarm · Confianza mín: 75%</div>
-        </div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:12px 0">Cargando...</div>
       </div>
     </div>
 
@@ -378,6 +377,43 @@
     document.getElementById('clock').textContent =
       new Date().toLocaleTimeString('es-ES', { hour12: false });
   }, 1000);
+
+  // Filtro de tenant activo
+  let activeTenant = 'all';
+  const allEvents = [];
+
+  function filterByTenant() {
+    activeTenant = document.getElementById('tenant-filter').value;
+    const container = document.getElementById('feed-container');
+    container.innerHTML = '';
+    const filtered = activeTenant === 'all' ? allEvents : allEvents.filter(e => e.tenantId === activeTenant);
+    if (filtered.length === 0) {
+      container.innerHTML = '<div class="empty"><div class="empty-icon">📡</div><div class="empty-text">Sin eventos para este tenant</div></div>';
+    } else {
+      filtered.slice(-50).forEach(e => { const card = document.createElement('div'); card.className = 'event-card'; card.innerHTML = buildCard(e); container.appendChild(card); });
+    }
+  }
+
+  // Cargar tenants dinámicos
+  fetch('/api/tenants').then(r => r.json()).then(tenants => {
+    const sel = document.getElementById('tenant-filter');
+    const cont = document.getElementById('tenants-container');
+    cont.innerHTML = '';
+    tenants.forEach(t => {
+      sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+      cont.innerHTML += `<div class="tenant-card"><div class="tenant-name">${t.name}</div><div class="tenant-meta">${t.providers.join(' + ')} · Confianza mín: ${(t.minConfidence*100).toFixed(0)}%</div></div>`;
+    });
+  }).catch(() => {});
+
+  // Botón demo
+  function triggerDemo() {
+    const btn = document.getElementById('btn-demo');
+    btn.textContent = '⏳ Disparando...';
+    btn.disabled = true;
+    fetch('/api/demo/trigger', { method: 'POST' })
+      .then(() => setTimeout(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; }, 2000))
+      .catch(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; });
+  }
 
   // Metrics state
   const metrics = { alerts: 0, resolved: 0, escalated: 0, confidences: [] };
@@ -547,6 +583,17 @@
   socket.on('connect', () => {
     document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00ffa3;box-shadow:0 0 8px #00ffa3;animation:pulse 2s infinite';
     document.getElementById('conn-status').textContent = 'Conectado';
+
+    // Cargar audit log persistido del servidor
+    fetch('/api/audit').then(r => r.json()).then(entries => {
+      const summary = document.getElementById('audit-container');
+      if (entries.length > 0 && summary) {
+        entries.slice(-20).forEach(e => {
+          const icon = e.type === 'action' ? (e.success ? '✅' : '❌') : e.type === 'escalation' ? '📲' : '🚫';
+          addAudit(icon, `[histórico] ${e.label} — ${e.service}`);
+        });
+      }
+    }).catch(() => {});
   });
 
   socket.on('disconnect', () => {
@@ -559,7 +606,8 @@
   });
 
   socket.on('pipeline_event', (event) => {
-    addEvent(event);
+    allEvents.push(event);
+    if (activeTenant === 'all' || event.tenantId === activeTenant) addEvent(event);
   });
 </script>
 </body>
