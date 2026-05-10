@@ -69,16 +69,15 @@ export class AuditLogger {
         );
       `);
       console.log(`[AUDIT] Tabla de PostgreSQL verificada/creada.`);
-      
+
       // Load recent logs from DB into cache
       const res = await this.pool?.query(
         `SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT $1`,
         [MAX_MEMORY]
       );
       if (res && res.rows) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         this.cache = res.rows
-          .map((r: any) => ({
+          .map((r) => ({
             id: r.id,
             timestamp: new Date(r.timestamp).toISOString(),
             type: r.type as AuditEntryType,

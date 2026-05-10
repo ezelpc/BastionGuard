@@ -57,13 +57,13 @@ export class WebServer {
     ) => {
       // Desactivado en desarrollo o si no hay JWT_SECRET configurado
       if (process.env.NODE_ENV !== "production") return next();
-      
+
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith("Bearer ")) {
         res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
         return;
       }
-      
+
       const token = authHeader.split(" ")[1];
       try {
         jwt.verify(token, process.env.JWT_SECRET || "dev-secret-key-change-in-production");
