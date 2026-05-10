@@ -9,10 +9,12 @@ import { EscalationManager } from "./core/escalation/EscalationManager";
 
 process.on("uncaughtException", (err) => {
   console.error("❌ Error no manejado:", err);
+  process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
   console.error("❌ Promise rechazada:", reason);
+  process.exit(1);
 });
 
 const receiver = new AlertReceiver(3000);
@@ -72,4 +74,24 @@ receiver.onAlert(async (alert) => {
   console.log(`   Escalados: ${escalation.getHistory().length}`);
 });
 
-receiver.start();
+// Iniciar el servidor y mantenerlo vivo
+(async () => {
+  try {
+    await receiver.start();
+    console.log("✅ BastionGuard iniciado correctamente\n");
+  } catch (err) {
+    console.error("❌ Error iniciando BastionGuard:", err);
+    process.exit(1);
+  }
+})();
+
+// Manejar señales de terminación
+process.on("SIGTERM", () => {
+  console.log("\n⏹️  Cerrando BastionGuard...");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  console.log("\n⏹️  Cerrando BastionGuard...");
+  process.exit(0);
+});

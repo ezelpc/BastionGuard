@@ -7,6 +7,7 @@ export class AlertReceiver {
   private normalizer = new AlertNormalizer();
   private alerts: IncomingAlert[] = [];
   private onAlertCallback?: (alert: IncomingAlert) => void | Promise<void>;
+  private server: any = null;
 
   public constructor(private port: number = 3000) {
     this.app.use(express.json());
@@ -17,14 +18,25 @@ export class AlertReceiver {
     this.onAlertCallback = callback;
   }
 
-  public start(): void {
-    this.app.listen(this.port, () => {
-      console.log(`\n🛡️  BastionGuard escuchando en puerto ${this.port}`);
-      console.log(`   Health:     GET  http://localhost:${this.port}/health`);
-      console.log(`   Prometheus: POST http://localhost:${this.port}/webhook/prometheus`);
-      console.log(`   Grafana:    POST http://localhost:${this.port}/webhook/grafana`);
-      console.log(`   CloudWatch: POST http://localhost:${this.port}/webhook/cloudwatch`);
-      console.log(`   Custom:     POST http://localhost:${this.port}/webhook/custom\n`);
+  public start(): Promise<void> {
+    return new Promise((resolve) => {
+      this.server = this.app.listen(this.port, () => {
+        console.log(`\n🛡️  BastionGuard escuchando en puerto ${this.port}`);
+        console.log(`   Health:     GET  http://localhost:${this.port}/health`);
+        console.log(`   Prometheus: POST http://localhost:${this.port}/webhook/prometheus`);
+        console.log(`   Grafana:    POST http://localhost:${this.port}/webhook/grafana`);
+        console.log(`   CloudWatch: POST http://localhost:${this.port}/webhook/cloudwatch`);
+        console.log(`   Custom:     POST http://localhost:${this.port}/webhook/custom\n`);
+        resolve();
+      });
+
+      this.server.on("error", (err: any) => {
+        if (err.code === "EADDRINUSE") {
+          console.error(`❌ Puerto ${this.port} ya está en uso`);
+          process.exit(1);
+        }
+        throw err;
+      });
     });
   }
 
