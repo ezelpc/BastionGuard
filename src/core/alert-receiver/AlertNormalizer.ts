@@ -10,8 +10,11 @@ export class AlertNormalizer {
         return this.fromGrafana(payload);
       case "cloudwatch":
         return this.fromCloudwatch(payload);
-      default:
+      case "datadog":
+      case "custom":
         return this.fromCustom(payload);
+      default:
+        throw new Error(`Fuente de alerta no soportada: '${source}'`);
     }
   }
 
