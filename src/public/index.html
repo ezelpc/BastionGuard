@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BastionGuard 🛡️</title>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0f1a;
+      color: #e2e8f0;
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.02);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, #00c3ff, #00ffa3);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+
+    .status-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: rgba(255,255,255,0.5);
+    }
+
+    .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #00ffa3;
+      box-shadow: 0 0 8px #00ffa3;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 6px #00ffa3; }
+      50% { box-shadow: 0 0 14px #00ffa3; }
+    }
+
+    /* METRICS */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .metric {
+      padding: 20px 32px;
+      border-right: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .metric:last-child { border-right: none; }
+
+    .metric-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      letter-spacing: -0.03em;
+    }
+
+    .metric-label {
+      font-size: 12px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .metric-sub {
+      font-size: 11px;
+      margin-top: 4px;
+      opacity: 0.7;
+    }
+
+    /* LAYOUT */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      height: calc(100vh - 121px);
+    }
+
+    /* FEED */
+    .feed {
+      padding: 24px;
+      overflow-y: auto;
+      border-right: 1px solid rgba(255,255,255,0.07);
+    }
+
+    .feed-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    /* EVENT CARD */
+    .event-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      animation: slideIn 0.3s ease;
+      transition: border-color 0.2s;
+    }
+
+    .event-card:hover {
+      border-color: rgba(255,255,255,0.15);
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .event-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .event-type {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+
+    .event-time {
+      font-size: 11px;
+      color: rgba(255,255,255,0.3);
+      font-family: monospace;
+    }
+
+    .event-body {
+      font-size: 13px;
+      color: rgba(255,255,255,0.7);
+      line-height: 1.5;
+    }
+
+    .event-service {
+      font-family: monospace;
+      background: rgba(255,255,255,0.06);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+
+    .badge {
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .badge-critical { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid rgba(255,68,68,0.3); }
+    .badge-high { background: rgba(255,153,0,0.15); color: #ff9900; border: 1px solid rgba(255,153,0,0.3); }
+    .badge-medium { background: rgba(255,217,61,0.15); color: #ffd93d; border: 1px solid rgba(255,217,61,0.3); }
+    .badge-low { background: rgba(0,255,163,0.15); color: #00ffa3; border: 1px solid rgba(0,255,163,0.3); }
+    .badge-success { background: rgba(0,255,163,0.15); color: #00ffa3; border: 1px solid rgba(0,255,163,0.2); }
+    .badge-escalation { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); }
+
+    .causes {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.5);
+    }
+
+    .cause-item::before { content: "• "; }
+
+    .confidence-bar {
+      margin-top: 8px;
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .confidence-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.5s ease;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      padding: 24px;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      margin-bottom: 28px;
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: rgba(255,255,255,0.3);
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+
+    /* TENANT CARD */
+    .tenant-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 8px;
+    }
+
+    .tenant-name {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .tenant-meta {
+      font-size: 11px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* AUDIT LOG */
+    .audit-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      font-size: 12px;
+    }
+
+    .audit-item:last-child { border-bottom: none; }
+
+    .audit-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+    .audit-text { color: rgba(255,255,255,0.6); line-height: 1.4; }
+
+    .audit-time {
+      font-family: monospace;
+      font-size: 10px;
+      color: rgba(255,255,255,0.25);
+      margin-top: 2px;
+    }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: rgba(255,255,255,0.2);
+    }
+
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🛡</div>
+    <div>
+      <div>BastionGuard</div>
+      <div style="font-size:10px;font-weight:400;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase">AI Auto-Remediation</div>
+    </div>
+  </div>
+  <div class="status-badge">
+    <div class="dot" id="conn-dot" style="background:#ff4444;box-shadow:0 0 8px #ff4444"></div>
+    <span id="conn-status">Conectando...</span>
+    <span style="margin-left:12px;font-family:monospace" id="clock"></span>
+  </div>
+</header>
+
+<div class="metrics">
+  <div class="metric">
+    <div class="metric-value" id="m-alerts" style="color:#00c3ff">0</div>
+    <div class="metric-label">Alertas recibidas</div>
+    <div class="metric-sub" style="color:#00c3ff">Esta sesión</div>
+  </div>
+  <div class="metric">
+    <div class="metric-value" id="m-resolved" style="color:#00ffa3">0</div>
+    <div class="metric-label">Auto-resueltas</div>
+    <div class="metric-sub" style="color:#00ffa3">Sin intervención humana</div>
+  </div>
+  <div class="metric">
+    <div class="metric-value" id="m-escalated" style="color:#ff6b6b">0</div>
+    <div class="metric-label">Escaladas</div>
+    <div class="metric-sub" style="color:#ff6b6b">On-call notificado</div>
+  </div>
+  <div class="metric">
+    <div class="metric-value" id="m-confidence" style="color:#ffd93d">-</div>
+    <div class="metric-label">Confianza promedio IA</div>
+    <div class="metric-sub" style="color:#ffd93d">Últimas decisiones</div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- FEED -->
+  <div class="feed">
+    <div class="feed-title">Pipeline en tiempo real</div>
+    <div id="feed-container">
+      <div class="empty">
+        <div class="empty-icon">📡</div>
+        <div class="empty-text">Esperando alertas...<br><br>
+          <code style="font-size:11px;color:rgba(255,255,255,0.3)">
+            curl -X POST http://localhost:3000/webhook/prometheus \<br>
+            &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+            &nbsp;&nbsp;-d '{"alerts":[{"labels":{"severity":"critical","job":"api-gateway"},"annotations":{"summary":"Latencia alta"}}]}'
+          </code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-title">Tenants activos</div>
+      <div id="tenants-container">
+        <div class="tenant-card">
+          <div class="tenant-name">Empresa A</div>
+          <div class="tenant-meta">Kubernetes · Confianza mín: 80%</div>
+        </div>
+        <div class="tenant-card">
+          <div class="tenant-name">Empresa B</div>
+          <div class="tenant-meta">ECS + Docker Swarm · Confianza mín: 75%</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-title">Audit log</div>
+      <div id="audit-container">
+        <div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:20px 0">
+          Sin acciones registradas
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Clock
+  setInterval(() => {
+    document.getElementById('clock').textContent =
+      new Date().toLocaleTimeString('es-ES', { hour12: false });
+  }, 1000);
+
+  // Metrics state
+  const metrics = { alerts: 0, resolved: 0, escalated: 0, confidences: [] };
+
+  function updateMetrics() {
+    document.getElementById('m-alerts').textContent = metrics.alerts;
+    document.getElementById('m-resolved').textContent = metrics.resolved;
+    document.getElementById('m-escalated').textContent = metrics.escalated;
+    if (metrics.confidences.length > 0) {
+      const avg = metrics.confidences.reduce((a,b) => a+b, 0) / metrics.confidences.length;
+      document.getElementById('m-confidence').textContent = `${(avg * 100).toFixed(0)}%`;
+    }
+  }
+
+  // Audit log
+  const auditItems = [];
+
+  function addAudit(icon, text) {
+    auditItems.unshift({ icon, text, time: new Date().toLocaleTimeString('es-ES', { hour12: false }) });
+    if (auditItems.length > 20) auditItems.pop();
+    renderAudit();
+  }
+
+  function renderAudit() {
+    const container = document.getElementById('audit-container');
+    container.innerHTML = auditItems.map(item => `
+      <div class="audit-item">
+        <div class="audit-icon">${item.icon}</div>
+        <div>
+          <div class="audit-text">${item.text}</div>
+          <div class="audit-time">${item.time}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Feed
+  function addEvent(event) {
+    const container = document.getElementById('feed-container');
+
+    // Quitar empty state
+    const empty = container.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.innerHTML = buildCard(event);
+    container.insertBefore(card, container.firstChild);
+
+    // Limitar a 50 cards
+    const cards = container.querySelectorAll('.event-card');
+    if (cards.length > 50) cards[cards.length - 1].remove();
+  }
+
+  function buildCard(event) {
+    const time = new Date(event.timestamp).toLocaleTimeString('es-ES', { hour12: false });
+
+    if (event.type === 'alert') {
+      const a = event.data;
+      const sevClass = `badge-${a.severity}`;
+      metrics.alerts++;
+      updateMetrics();
+      addAudit('🚨', `Alerta recibida: ${a.service} — ${a.message}`);
+      return `
+        <div class="event-header">
+          <div class="event-type" style="color:#00c3ff">🚨 Alerta entrante</div>
+          <span class="event-time">${time}</span>
+        </div>
+        <div class="event-body">
+          <span class="event-service">${a.service}</span>
+          <span class="badge ${sevClass}" style="margin-left:8px">${a.severity}</span>
+          <div style="margin-top:8px;color:rgba(255,255,255,0.6)">${a.message}</div>
+          <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.3)">Fuente: ${a.source} · ID: ${a.id.slice(0,8)}</div>
+        </div>`;
+    }
+
+    if (event.type === 'diagnostic') {
+      const r = event.data;
+      const confColor = r.confidence > 0.7 ? '#00ffa3' : r.confidence > 0.5 ? '#ffd93d' : '#ff6b6b';
+      addAudit('📋', `Diagnóstico: ${r.possibleCauses.length} causa(s) — confianza ${(r.confidence*100).toFixed(0)}%`);
+      return `
+        <div class="event-header">
+          <div class="event-type" style="color:#ffd93d">📋 Diagnóstico</div>
+          <span class="event-time">${time}</span>
+        </div>
+        <div class="event-body">
+          <span class="event-service">${r.service.name}</span>
+          <span style="margin-left:8px;font-size:12px;color:rgba(255,255,255,0.4)">
+            Réplicas: ${r.service.replicas.ready}/${r.service.replicas.desired}
+            ${r.service.recentDeploy ? ' · ⚠️ Deploy reciente' : ''}
+          </span>
+          <div class="causes">
+            ${r.possibleCauses.map(c => `<div class="cause-item">${c}</div>`).join('')}
+          </div>
+          <div style="margin-top:8px;font-size:11px;color:${confColor}">
+            Confianza: ${(r.confidence*100).toFixed(0)}%
+          </div>
+          <div class="confidence-bar">
+            <div class="confidence-fill" style="width:${r.confidence*100}%;background:${confColor}"></div>
+          </div>
+        </div>`;
+    }
+
+    if (event.type === 'decision') {
+      const d = event.data;
+      metrics.confidences.push(d.confidence);
+      updateMetrics();
+      const actColor = d.escalate ? '#ff6b6b' : '#00ffa3';
+      addAudit('🤖', `IA decide: ${d.shouldAct ? d.actionName : 'escalar'}`);
+      return `
+        <div class="event-header">
+          <div class="event-type" style="color:#a78bfa">🤖 Decisión IA</div>
+          <span class="event-time">${time}</span>
+        </div>
+        <div class="event-body">
+          <span style="color:${actColor};font-weight:600">
+            ${d.escalate ? '📲 Escalar a on-call' : `⚙️ Ejecutar: ${d.actionName}`}
+          </span>
+          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5);font-style:italic">
+            "${d.reasoning}"
+          </div>
+          <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.3)">
+            Confianza: ${(d.confidence*100).toFixed(0)}%
+          </div>
+        </div>`;
+    }
+
+    if (event.type === 'action') {
+      const r = event.data;
+      if (r.success) { metrics.resolved++; updateMetrics(); }
+      addAudit(r.success ? '✅' : '❌', `${r.actionName}: ${r.success ? 'exitoso' : 'fallido'}`);
+      return `
+        <div class="event-header">
+          <div class="event-type" style="color:${r.success ? '#00ffa3' : '#ff6b6b'}">
+            ${r.success ? '✅' : '❌'} ${r.dryRun ? '[DRY-RUN]' : ''} Acción ejecutada
+          </div>
+          <span class="event-time">${time}</span>
+        </div>
+        <div class="event-body">
+          <span class="badge ${r.success ? 'badge-success' : 'badge-critical'}">${r.actionName}</span>
+          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5)">${r.details}</div>
+        </div>`;
+    }
+
+    if (event.type === 'escalation') {
+      const e = event.data;
+      metrics.escalated++; updateMetrics();
+      addAudit('📲', `Escalado: ${e.service} — ${e.reason}`);
+      return `
+        <div class="event-header">
+          <div class="event-type" style="color:#ff6b6b">📲 Escalado a on-call</div>
+          <span class="event-time">${time}</span>
+        </div>
+        <div class="event-body">
+          <span class="event-service">${e.service}</span>
+          <span class="badge badge-escalation" style="margin-left:8px">escalado</span>
+          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5)">${e.reason}</div>
+        </div>`;
+    }
+
+    return '';
+  }
+
+  // Socket.IO
+  const socket = io();
+
+  socket.on('connect', () => {
+    document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00ffa3;box-shadow:0 0 8px #00ffa3;animation:pulse 2s infinite';
+    document.getElementById('conn-status').textContent = 'Conectado';
+  });
+
+  socket.on('disconnect', () => {
+    document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444';
+    document.getElementById('conn-status').textContent = 'Desconectado';
+  });
+
+  socket.on('history', (events) => {
+    events.forEach(e => addEvent(e));
+  });
+
+  socket.on('pipeline_event', (event) => {
+    addEvent(event);
+  });
+</script>
+</body>
+</html>

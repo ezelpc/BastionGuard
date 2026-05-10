@@ -1,16 +1,21 @@
-import express, { Request, Response } from "express";
+import express, { Application, Request, Response } from "express";
 import { AlertNormalizer } from "./AlertNormalizer";
 import { AlertSource, IncomingAlert } from "./types";
 
 export class AlertReceiver {
-  private app = express();
+  private app: Application;
   private normalizer = new AlertNormalizer();
   private alerts: IncomingAlert[] = [];
   private onAlertCallback?: (alert: IncomingAlert) => void | Promise<void>;
-  private server: any = null;
 
-  public constructor(private port: number = 3000) {
-    this.app.use(express.json());
+  public constructor(
+    private port: number = 3000,
+    existingApp?: Application
+  ) {
+    this.app = existingApp ?? express();
+    if (!existingApp) {
+      this.app.use(express.json());
+    }
     this.setupRoutes();
   }
 
@@ -19,23 +24,14 @@ export class AlertReceiver {
   }
 
   public start(): Promise<void> {
+    if (this.app.get("port")) {
+      // Ya está corriendo desde WebServer
+      return Promise.resolve();
+    }
     return new Promise((resolve) => {
-      this.server = this.app.listen(this.port, () => {
-        console.log(`\n🛡️  BastionGuard escuchando en puerto ${this.port}`);
-        console.log(`   Health:     GET  http://localhost:${this.port}/health`);
-        console.log(`   Prometheus: POST http://localhost:${this.port}/webhook/prometheus`);
-        console.log(`   Grafana:    POST http://localhost:${this.port}/webhook/grafana`);
-        console.log(`   CloudWatch: POST http://localhost:${this.port}/webhook/cloudwatch`);
-        console.log(`   Custom:     POST http://localhost:${this.port}/webhook/custom\n`);
+      this.app.listen(this.port, () => {
+        console.log(`\n🛡️  BastionGuard escuchando en puerto ${this.port}\n`);
         resolve();
-      });
-
-      this.server.on("error", (err: any) => {
-        if (err.code === "EADDRINUSE") {
-          console.error(`❌ Puerto ${this.port} ya está en uso`);
-          process.exit(1);
-        }
-        throw err;
       });
     });
   }
@@ -67,12 +63,9 @@ export class AlertReceiver {
         });
 
         if (this.onAlertCallback) {
-          console.log(`[ALERT] Disparando pipeline...`);
           Promise.resolve(this.onAlertCallback(alert)).catch((err) => {
             console.error(`[ALERT] Error en pipeline:`, err);
           });
-        } else {
-          console.warn(`[ALERT] No hay callback registrado`);
         }
 
         res.status(200).json({ received: true, alertId: alert.id });
