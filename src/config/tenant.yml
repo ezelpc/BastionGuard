@@ -1,0 +1,95 @@
+tenants:
+  - id: empresa-a
+    name: Empresa A
+    enabled: true
+    providers:
+      - name: kubernetes
+        enabled: true
+        config:
+          namespace: production
+          kubeConfigPath: ~/.kube/config
+      - name: docker-swarm
+        enabled: false
+        config:
+          socketPath: /var/run/docker.sock
+      - name: ecs
+        enabled: false
+        config:
+          region: us-east-1
+
+    allowedActions:
+      - name: restart-service
+        allowed: true
+        maxConcurrency: 2
+        rateLimit:
+          maxPerHour: 10
+          maxPerDay: 30
+      - name: scale-service
+        allowed: true
+        maxConcurrency: 3
+        rateLimit:
+          maxPerHour: 5
+          maxPerDay: 20
+        requiresApproval: false
+      - name: update-image
+        allowed: true
+        requiresApproval: true
+      - name: delete-service
+        allowed: false
+      - name: terminate-cluster
+        allowed: false
+
+    escalationTargets:
+      slack: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+      email:
+        - ops-team@empresa-a.com
+        - security@empresa-a.com
+      pagerduty: YOUR_PAGERDUTY_KEY
+
+    aiThreshold:
+      minConfidence: 0.80
+      maxAutoRemediate: 3
+
+  - id: empresa-b
+    name: Empresa B
+    enabled: true
+    providers:
+      - name: ecs
+        enabled: true
+        config:
+          region: eu-west-1
+          accessKeyId: ${AWS_ACCESS_KEY_ID}
+          secretAccessKey: ${AWS_SECRET_ACCESS_KEY}
+      - name: docker-swarm
+        enabled: true
+        config:
+          host: tcp://swarm-manager:2375
+      - name: kubernetes
+        enabled: false
+        config:
+          namespace: default
+
+    allowedActions:
+      - name: scale-task
+        allowed: true
+        maxConcurrency: 5
+      - name: restart-task
+        allowed: true
+        maxConcurrency: 3
+      - name: update-image
+        allowed: false
+      - name: restart-service
+        allowed: true
+      - name: delete-service
+        allowed: false
+      - name: terminate-cluster
+        allowed: false
+
+    escalationTargets:
+      slack: https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK
+      email:
+        - devops@empresa-b.com
+
+    aiThreshold:
+      minConfidence: 0.75
+      maxAutoRemediate: 2
