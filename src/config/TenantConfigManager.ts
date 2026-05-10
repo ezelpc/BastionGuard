@@ -56,9 +56,7 @@ export class TenantConfigManager {
 
   public getTenantByApiKey(apiKey: string): TenantConfig | null {
     if (!apiKey) return null;
-    const tenant = Array.from(this.tenants.values()).find(
-      (t) => t.enabled && t.apiKey === apiKey
-    );
+    const tenant = Array.from(this.tenants.values()).find((t) => t.enabled && t.apiKey === apiKey);
     return tenant ?? null;
   }
 

@@ -3,7 +3,9 @@ import { AuditLogger } from "../audit/AuditLogger";
 export class PostMortemGenerator {
   public async generate(serviceName: string, tenantId: string): Promise<string> {
     const audit = AuditLogger.getInstance();
-    const logs = audit.readLast(30).filter(l => l.service === serviceName && l.tenantId === tenantId);
+    const logs = audit
+      .readLast(30)
+      .filter((l) => l.service === serviceName && l.tenantId === tenantId);
 
     if (logs.length === 0) {
       return "No se encontraron logs recientes para generar un Post-Mortem.";

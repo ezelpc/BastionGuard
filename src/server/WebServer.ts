@@ -50,7 +50,11 @@ export class WebServer {
       });
     });
 
-    const authMiddleware = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const authMiddleware = (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction
+    ) => {
       // Desactivado en desarrollo o si no hay JWT_SECRET configurado
       if (process.env.NODE_ENV !== "production") return next();
       
@@ -97,12 +101,16 @@ export class WebServer {
     });
 
     const postMortemGen = new PostMortemGenerator();
-    this.app.post("/api/tenants/:tenantId/services/:serviceName/post-mortem", authMiddleware, async (req, res) => {
-      const tenantId = req.params.tenantId as string;
-      const serviceName = req.params.serviceName as string;
-      const rca = await postMortemGen.generate(serviceName, tenantId);
-      res.json({ markdown: rca });
-    });
+    this.app.post(
+      "/api/tenants/:tenantId/services/:serviceName/post-mortem",
+      authMiddleware,
+      async (req, res) => {
+        const tenantId = req.params.tenantId as string;
+        const serviceName = req.params.serviceName as string;
+        const rca = await postMortemGen.generate(serviceName, tenantId);
+        res.json({ markdown: rca });
+      }
+    );
 
     // Trigger de demo — solo en modo no-producción
     this.app.all("/api/demo/trigger", async (_req, res) => {

@@ -1,7 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
-// @ts-ignore
 import { Pool } from "pg";
 import { AuditEntry, AuditEntryType } from "./types";
 
@@ -72,20 +71,26 @@ export class AuditLogger {
       console.log(`[AUDIT] Tabla de PostgreSQL verificada/creada.`);
       
       // Load recent logs from DB into cache
-      const res = await this.pool?.query(`SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT $1`, [MAX_MEMORY]);
+      const res = await this.pool?.query(
+        `SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT $1`,
+        [MAX_MEMORY]
+      );
       if (res && res.rows) {
-        this.cache = res.rows.map((r: any) => ({
-          id: r.id,
-          timestamp: new Date(r.timestamp).toISOString(),
-          type: r.type as AuditEntryType,
-          tenantId: r.tenant_id,
-          service: r.service,
-          label: r.label,
-          success: r.success,
-          confidence: r.confidence,
-          details: r.details,
-          dryRun: r.dry_run
-        })).reverse();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.cache = res.rows
+          .map((r: any) => ({
+            id: r.id,
+            timestamp: new Date(r.timestamp).toISOString(),
+            type: r.type as AuditEntryType,
+            tenantId: r.tenant_id,
+            service: r.service,
+            label: r.label,
+            success: r.success,
+            confidence: r.confidence,
+            details: r.details,
+            dryRun: r.dry_run,
+          }))
+          .reverse();
       }
     } catch (err) {
       console.error("[AUDIT] Error inicializando DB:", err);
@@ -137,6 +142,7 @@ export class AuditLogger {
             opts.dryRun ?? null,
           ]
         )
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .catch((err: any) => console.error("[AUDIT] Error persistiendo en DB:", err));
     } else {
       // Guardar en archivo local

@@ -68,6 +68,7 @@ export class AlertReceiver {
       try {
         const alert = this.normalizer.normalize(source, payload);
         if (authorizedTenantId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           (alert as any).tenantId = authorizedTenantId;
         }
         this.alerts.push(alert);
