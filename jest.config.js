@@ -4,12 +4,16 @@ module.exports = {
   rootDir: ".",
   testMatch: ["<rootDir>/src/**/__tests__/**/*.test.ts", "<rootDir>/src/**/*.test.ts"],
   moduleFileExtensions: ["ts", "js"],
-  extensionsToTreatAsEsm: [".ts"],
+  transformIgnorePatterns: ["node_modules/(?!(@kubernetes/client-node)/)"],
+  moduleNameMapper: {
+    "^@kubernetes/client-node$": "<rootDir>/src/__mocks__/kubernetes.ts",
+  },
   collectCoverageFrom: [
     "src/**/*.ts",
     "!src/**/*.d.ts",
     "!src/**/__tests__/**",
     "!src/**/index.ts",
+    "!src/__mocks__/**",
   ],
   coverageThreshold: {
     global: {
@@ -21,7 +25,6 @@ module.exports = {
   },
   globals: {
     "ts-jest": {
-      useESM: true,
       tsconfig: {
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
