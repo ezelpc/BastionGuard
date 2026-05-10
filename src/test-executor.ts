@@ -6,15 +6,14 @@ import { DiagnosticEngine } from "./core/diagnostic-engine/DiagnosticEngine";
 import { AIDecisionAgent } from "./core/ai-agent/AIDecisionAgent";
 import { ActionExecutor } from "./core/action-executor/ActionExecutor";
 import { EscalationManager } from "./core/escalation/EscalationManager";
+import { TenantConfigManager } from "./config/TenantConfigManager";
 
 process.on("uncaughtException", (err) => {
   console.error("❌ Error no manejado:", err);
-  process.exit(1);
 });
 
 process.on("unhandledRejection", (reason) => {
   console.error("❌ Promise rechazada:", reason);
-  process.exit(1);
 });
 
 const receiver = new AlertReceiver(3000);
@@ -22,37 +21,65 @@ const diagnostic = new DiagnosticEngine();
 const agent = new AIDecisionAgent();
 const executor = new ActionExecutor(true);
 const escalation = new EscalationManager();
+const tenantConfig = new TenantConfigManager();
 
 receiver.onAlert(async (alert) => {
+  const TENANT_ID = "empresa-a";
+
   console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(`🚨 [${alert.severity.toUpperCase()}] ${alert.service}: ${alert.message}`);
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
+  // Verificar tenant
+  const tenant = tenantConfig.getTenant(TENANT_ID);
+  const aiThreshold = tenant.aiThreshold;
+  console.log(
+    `\n🏢 Tenant: ${tenant.name} | Confianza mínima: ${aiThreshold.minConfidence * 100}%`
+  );
+
+  // Paso 1: Diagnóstico
   const report = await diagnostic.diagnose(alert);
   console.log(`\n📋 Causas: ${report.possibleCauses.join(" | ")}`);
   console.log(`   Confianza: ${(report.confidence * 100).toFixed(0)}%`);
 
+  // Paso 2: Decisión IA
   const decision = await agent.decide({
     report,
-    tenantId: "empresa-a",
+    tenantId: TENANT_ID,
     attemptNumber: 1,
   });
 
   console.log(`\n🤖 IA decide: ${decision.shouldAct ? decision.actionName : "no actuar"}`);
   console.log(`   Razonamiento: ${decision.reasoning}`);
 
+  // Paso 3: Verificar si la acción está permitida para este tenant
+  if (decision.shouldAct && decision.actionName) {
+    const allowed = tenantConfig.isActionAllowed(TENANT_ID, decision.actionName);
+    if (!allowed) {
+      console.log(`\n🚫 Acción '${decision.actionName}' no permitida para tenant ${TENANT_ID}`);
+      await escalation.escalate(TENANT_ID, report, {
+        ...decision,
+        escalate: true,
+        escalationReason: `Acción '${decision.actionName}' no está en la allowlist del tenant`,
+      });
+      return;
+    }
+  }
+
+  // Paso 4: Escalar si la IA no puede resolver
   if (decision.escalate) {
-    await escalation.escalate("empresa-a", report, decision);
+    await escalation.escalate(TENANT_ID, report, decision);
     return;
   }
 
+  // Paso 5: Ejecutar acción
   if (decision.shouldAct && decision.actionName && decision.provider) {
     console.log(`\n⚙️  Ejecutando: ${decision.actionName}...`);
 
     const result = await executor.execute({
       actionName: decision.actionName,
       provider: decision.provider,
-      tenantId: "empresa-a",
+      tenantId: TENANT_ID,
       params: decision.params ?? {},
       requestedBy: "ai-agent",
     });
@@ -62,7 +89,7 @@ receiver.onAlert(async (alert) => {
       console.log(`   ${result.details}`);
     } else {
       console.log(`\n❌ Acción fallida — escalando`);
-      await escalation.escalate("empresa-a", report, {
+      await escalation.escalate(TENANT_ID, report, {
         ...decision,
         escalate: true,
         escalationReason: result.error,
@@ -74,9 +101,9 @@ receiver.onAlert(async (alert) => {
   console.log(`   Escalados: ${escalation.getHistory().length}`);
 });
 
-// Iniciar el servidor y mantenerlo vivo
 (async () => {
   try {
+    await tenantConfig.load();
     await receiver.start();
     console.log("✅ BastionGuard iniciado correctamente\n");
   } catch (err) {
@@ -85,7 +112,6 @@ receiver.onAlert(async (alert) => {
   }
 })();
 
-// Manejar señales de terminación
 process.on("SIGTERM", () => {
   console.log("\n⏹️  Cerrando BastionGuard...");
   process.exit(0);
