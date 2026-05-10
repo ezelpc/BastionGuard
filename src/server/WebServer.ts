@@ -76,7 +76,7 @@ export class WebServer {
     });
 
     // Trigger de demo — solo en modo no-producción
-    this.app.post("/api/demo/trigger", async (_req, res) => {
+    this.app.all("/api/demo/trigger", async (_req, res) => {
       if (process.env.NODE_ENV === "production") {
         res.status(403).json({ error: "No disponible en producción" });
         return;
