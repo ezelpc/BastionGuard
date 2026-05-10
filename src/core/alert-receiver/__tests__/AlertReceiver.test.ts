@@ -13,9 +13,7 @@ function startServer(app: Application): Promise<{ port: number; close: () => Pro
       resolve({
         port: addr.port,
         close: () =>
-          new Promise<void>((res, rej) =>
-            server.close((err) => (err ? rej(err) : res()))
-          ),
+          new Promise<void>((res, rej) => server.close((err) => (err ? rej(err) : res()))),
       });
     });
     server.on("error", reject);
@@ -46,7 +44,10 @@ async function httpRequest(
       res.on("data", (chunk: string) => (data += chunk));
       res.on("end", () => {
         try {
-          resolve({ status: res.statusCode ?? 0, body: JSON.parse(data) as Record<string, unknown> });
+          resolve({
+            status: res.statusCode ?? 0,
+            body: JSON.parse(data) as Record<string, unknown>,
+          });
         } catch {
           reject(new Error(`Could not parse response: ${data}`));
         }

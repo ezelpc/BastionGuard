@@ -77,22 +77,19 @@ describe("ActionExecutor", () => {
       "flush",
     ];
 
-    it.each(FORBIDDEN)(
-      "debe bloquear params que contienen '%s'",
-      async (keyword) => {
-        const result = await executor.execute({
-          actionName: "restart_service",
-          provider: "kubernetes",
-          tenantId: "empresa-a",
-          params: { service: "api", operation: keyword },
-          requestedBy: "ai-agent",
-        });
+    it.each(FORBIDDEN)("debe bloquear params que contienen '%s'", async (keyword) => {
+      const result = await executor.execute({
+        actionName: "restart_service",
+        provider: "kubernetes",
+        tenantId: "empresa-a",
+        params: { service: "api", operation: keyword },
+        requestedBy: "ai-agent",
+      });
 
-        expect(result.success).toBe(false);
-        expect(result.details).toContain("BLOQUEADO");
-        expect(result.error).toContain(keyword);
-      }
-    );
+      expect(result.success).toBe(false);
+      expect(result.details).toContain("BLOQUEADO");
+      expect(result.error).toContain(keyword);
+    });
 
     it("debe permitir params sin keywords prohibidas", async () => {
       const result = await executor.execute({
