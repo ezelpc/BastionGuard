@@ -2,6 +2,7 @@ import {
   DescribeServicesCommand,
   DescribeTaskDefinitionCommand,
   ECSClient,
+  ECSClientConfig,
   UpdateServiceCommand,
 } from "@aws-sdk/client-ecs";
 import { ECSConfig, RestartTaskParams, ScaleTaskParams, UpdateTaskDefinitionParams } from "./types";
@@ -12,7 +13,7 @@ export class ECSProvider {
   public constructor(config: ECSConfig) {
     console.log(`[ECS] Inicializando proveedor para región: ${config.region}`);
 
-    const clientConfig: any = {
+    const clientConfig: ECSClientConfig = {
       region: config.region,
     };
 

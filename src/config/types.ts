@@ -12,7 +12,7 @@ export interface ActionPolicy {
 export interface ProviderConfig {
   name: "kubernetes" | "ecs" | "docker-swarm";
   enabled: boolean;
-  config: Record<string, any>;
+  config: Record<string, unknown>;
 }
 
 export interface TenantConfig {

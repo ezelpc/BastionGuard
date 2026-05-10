@@ -12,7 +12,7 @@ export class DockerSwarmProvider {
   public constructor(config: DockerSwarmConfig) {
     console.log(`[SWARM] Inicializando proveedor Docker Swarm`);
 
-    const dockerConfig: any = {};
+    const dockerConfig: Docker.DockerOptions = {};
 
     if (config.host) {
       dockerConfig.host = config.host;
@@ -47,6 +47,7 @@ export class DockerSwarmProvider {
         },
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
         spec: newSpec as any,
@@ -76,6 +77,7 @@ export class DockerSwarmProvider {
         },
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
         spec: newSpec as any,
@@ -110,6 +112,7 @@ export class DockerSwarmProvider {
         },
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
         spec: newSpec as any,

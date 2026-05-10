@@ -73,7 +73,7 @@ export class TenantConfigManager {
     }
   }
 
-  public getProviderConfig(tenantId: string, providerName: string): any | null {
+  public getProviderConfig(tenantId: string, providerName: string): Record<string, unknown> | null {
     try {
       const tenant = this.getTenant(tenantId);
       const provider = tenant.providers.find((p) => p.name === providerName && p.enabled);
@@ -83,7 +83,7 @@ export class TenantConfigManager {
     }
   }
 
-  public getEscalationTargets(tenantId: string): any {
+  public getEscalationTargets(tenantId: string): TenantConfig['escalationTargets'] {
     try {
       const tenant = this.getTenant(tenantId);
       return tenant.escalationTargets;
@@ -92,7 +92,7 @@ export class TenantConfigManager {
     }
   }
 
-  public getAIThreshold(tenantId: string): any {
+  public getAIThreshold(tenantId: string): TenantConfig['aiThreshold'] {
     try {
       const tenant = this.getTenant(tenantId);
       return tenant.aiThreshold;
