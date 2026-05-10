@@ -281,6 +281,43 @@
     .empty-icon { font-size: 40px; margin-bottom: 12px; }
     .empty-text { font-size: 14px; }
 
+    /* LOGIN VIEW */
+    #login-view {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #0a0f1a;
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      backdrop-filter: blur(10px);
+      padding: 40px;
+      border-radius: 16px;
+      width: 100%; max-width: 400px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      text-align: center;
+    }
+
+    .login-input {
+      width: 100%; padding: 12px 16px; margin-bottom: 16px;
+      background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; color: white; font-family: inherit; font-size: 14px;
+      outline: none; transition: border-color 0.2s;
+    }
+
+    .login-input:focus { border-color: #00c3ff; }
+
+    .login-btn {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, #00c3ff, #00ffa3);
+      color: #0a0f1a; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: transform 0.1s; margin-top: 8px;
+    }
+
+    .login-btn:active { transform: scale(0.98); }
+
     /* SCROLLBAR */
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -289,6 +326,22 @@
 </head>
 <body>
 
+<!-- LOGIN VIEW -->
+<div id="login-view">
+  <div class="login-card">
+    <div class="logo-icon" style="margin: 0 auto 20px; width: 48px; height: 48px; font-size: 24px;">🛡</div>
+    <h2 style="margin-bottom: 8px; letter-spacing: -0.02em;">BastionGuard</h2>
+    <p style="font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 32px;">Inicia sesión para acceder al panel de control</p>
+    
+    <input type="email" id="login-email" class="login-input" placeholder="Correo electrónico" autocomplete="email">
+    <input type="password" id="login-password" class="login-input" placeholder="Contraseña" autocomplete="current-password">
+    <button class="login-btn" onclick="performLogin()">Ingresar al Sistema</button>
+    <div id="login-error" style="color: #ff4444; font-size: 12px; margin-top: 16px; display: none;"></div>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div id="dashboard-view" style="display: none;">
 <header>
   <div class="logo">
     <div class="logo-icon">🛡</div>
@@ -313,6 +366,7 @@
     <div class="dot" id="conn-dot" style="background:#ff4444;box-shadow:0 0 8px #ff4444"></div>
     <span id="conn-status">Conectando...</span>
     <span style="margin-left:12px;font-family:monospace" id="clock"></span>
+    <button onclick="performLogout()" style="margin-left:16px;padding:4px 8px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:4px;color:#ff4444;font-size:11px;cursor:pointer;">Salir</button>
   </div>
 </header>
 
@@ -376,8 +430,109 @@
     </div>
   </div>
 </div>
+</div> <!-- END DASHBOARD VIEW -->
 
 <script>
+  // Auth State
+  let authToken = localStorage.getItem('bg_token');
+
+  function checkAuth() {
+    if (authToken) {
+      document.getElementById('login-view').style.display = 'none';
+      document.getElementById('dashboard-view').style.display = 'block';
+      initApp();
+    }
+  }
+
+  function performLogin() {
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    const errDiv = document.getElementById('login-error');
+    errDiv.style.display = 'none';
+
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    .then(r => r.json().then(data => ({ status: r.status, data })))
+    .then(({ status, data }) => {
+      if (status === 200 && data.token) {
+        authToken = data.token;
+        localStorage.setItem('bg_token', authToken);
+        checkAuth();
+      } else {
+        errDiv.textContent = data.error || 'Credenciales inválidas';
+        errDiv.style.display = 'block';
+      }
+    })
+    .catch(() => {
+      errDiv.textContent = 'Error de conexión con el servidor.';
+      errDiv.style.display = 'block';
+    });
+  }
+
+  function performLogout() {
+    localStorage.removeItem('bg_token');
+    window.location.reload();
+  }
+
+  // Ejecutado tras un login exitoso
+  function initApp() {
+    const headers = { 'Authorization': `Bearer ${authToken}` };
+
+    // Filtro de tenant activo
+    fetch('/api/tenants', { headers }).then(r => {
+      if(r.status === 401 || r.status === 403) return performLogout();
+      return r.json();
+    }).then(tenants => {
+      const sel = document.getElementById('tenant-filter');
+      const cont = document.getElementById('tenants-container');
+      cont.innerHTML = '';
+      tenants.forEach(t => {
+        sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        cont.innerHTML += `<div class="tenant-card"><div class="tenant-name">${t.name}</div><div class="tenant-meta">${t.providers.join(' + ')} · Confianza mín: ${(t.minConfidence*100).toFixed(0)}%</div></div>`;
+      });
+    }).catch(() => {});
+
+    // Inicializar Socket.IO con auth token
+    const socket = io({ auth: { token: authToken } });
+
+    socket.on('connect_error', (err) => {
+      if (err.message.includes('Authentication')) performLogout();
+    });
+
+    socket.on('connect', () => {
+      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00ffa3;box-shadow:0 0 8px #00ffa3;animation:pulse 2s infinite';
+      document.getElementById('conn-status').textContent = 'Conectado';
+
+      // Cargar audit log persistido del servidor
+      fetch('/api/audit', { headers }).then(r => r.json()).then(entries => {
+        const summary = document.getElementById('audit-container');
+        if (entries.length > 0 && summary) {
+          entries.slice(-20).forEach(e => {
+            const icon = e.type === 'action' ? (e.success ? '✅' : '❌') : e.type === 'escalation' ? '📲' : '🚫';
+            addAudit(icon, `[histórico] ${e.label} — ${e.service}`);
+          });
+        }
+      }).catch(() => {});
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444';
+      document.getElementById('conn-status').textContent = 'Desconectado';
+    });
+
+    socket.on('history', (events) => {
+      events.forEach(e => addEvent(e));
+    });
+
+    socket.on('pipeline_event', (event) => {
+      allEvents.push(event);
+      if (activeTenant === 'all' || event.tenantId === activeTenant) addEvent(event);
+    });
+  }
+
   // Clock
   setInterval(() => {
     document.getElementById('clock').textContent =
@@ -400,23 +555,12 @@
     }
   }
 
-  // Cargar tenants dinámicos
-  fetch('/api/tenants').then(r => r.json()).then(tenants => {
-    const sel = document.getElementById('tenant-filter');
-    const cont = document.getElementById('tenants-container');
-    cont.innerHTML = '';
-    tenants.forEach(t => {
-      sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-      cont.innerHTML += `<div class="tenant-card"><div class="tenant-name">${t.name}</div><div class="tenant-meta">${t.providers.join(' + ')} · Confianza mín: ${(t.minConfidence*100).toFixed(0)}%</div></div>`;
-    });
-  }).catch(() => {});
-
   // Botón demo
   function triggerDemo() {
     const btn = document.getElementById('btn-demo');
     btn.textContent = '⏳ Disparando...';
     btn.disabled = true;
-    fetch('/api/demo/trigger', { method: 'POST' })
+    fetch('/api/demo/trigger', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } })
       .then(() => setTimeout(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; }, 2000))
       .catch(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; });
   }
@@ -432,7 +576,10 @@
     btn.textContent = '⏳ Generando...';
     btn.disabled = true;
 
-    fetch(`/api/tenants/${tenantId}/services/${serviceName}/post-mortem`, { method: 'POST' })
+    fetch(`/api/tenants/${tenantId}/services/${serviceName}/post-mortem`, { 
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    })
       .then(r => r.json())
       .then(res => {
          btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false;
@@ -454,7 +601,7 @@
     const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a) para ver su calendario de guardias:") : activeTenant;
     if (!tenantId) return;
 
-    fetch(`/api/tenants/${tenantId}/oncall`)
+    fetch(`/api/tenants/${tenantId}/oncall`, { headers: { 'Authorization': `Bearer ${authToken}` } })
       .then(r => r.json())
       .then(schedule => {
         let text = `Calendario de Guardias para ${tenantId}:\\n\\n`;
@@ -470,7 +617,10 @@
             const end = new Date(Date.now() + 86400000).toISOString(); // 24h
             fetch(`/api/tenants/${tenantId}/oncall`, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+              },
               body: JSON.stringify({ engineerName: name, phoneNumber: phone, shiftStart: start, shiftEnd: end, isActive: true })
             }).then(() => alert("¡Turno guardado con éxito! BastionGuard le llamará por Twilio si hay una emergencia."))
               .catch(() => alert("Error al guardar turno."));
@@ -641,38 +791,8 @@
     return '';
   }
 
-  // Socket.IO
-  const socket = io();
-
-  socket.on('connect', () => {
-    document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00ffa3;box-shadow:0 0 8px #00ffa3;animation:pulse 2s infinite';
-    document.getElementById('conn-status').textContent = 'Conectado';
-
-    // Cargar audit log persistido del servidor
-    fetch('/api/audit').then(r => r.json()).then(entries => {
-      const summary = document.getElementById('audit-container');
-      if (entries.length > 0 && summary) {
-        entries.slice(-20).forEach(e => {
-          const icon = e.type === 'action' ? (e.success ? '✅' : '❌') : e.type === 'escalation' ? '📲' : '🚫';
-          addAudit(icon, `[histórico] ${e.label} — ${e.service}`);
-        });
-      }
-    }).catch(() => {});
-  });
-
-  socket.on('disconnect', () => {
-    document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444';
-    document.getElementById('conn-status').textContent = 'Desconectado';
-  });
-
-  socket.on('history', (events) => {
-    events.forEach(e => addEvent(e));
-  });
-
-  socket.on('pipeline_event', (event) => {
-    allEvents.push(event);
-    if (activeTenant === 'all' || event.tenantId === activeTenant) addEvent(event);
-  });
+  // Init
+  checkAuth();
 </script>
 </body>
 </html>

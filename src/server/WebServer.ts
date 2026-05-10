@@ -11,6 +11,7 @@ import { ActionResult } from "../core/action-executor/types";
 import { AuditLogger } from "../core/audit/AuditLogger";
 import { TenantConfig } from "../config/types";
 import { OnCallManager } from "../core/escalation/OnCallManager";
+import { AuthManager } from "../core/auth/AuthManager";
 
 export interface PipelineEvent {
   id: string;
@@ -56,9 +57,7 @@ export class WebServer {
       res: express.Response,
       next: express.NextFunction
     ) => {
-      // Desactivado en desarrollo o si no hay JWT_SECRET configurado
-      if (process.env.NODE_ENV !== "production") return next();
-
+      // Requerimos token siempre para validar el nuevo UI
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith("Bearer ")) {
         res.status(401).json({ error: "Unauthorized: Missing or invalid token" });
@@ -97,6 +96,23 @@ export class WebServer {
     });
 
     // Resumen estadístico
+    const authManager = new AuthManager();
+
+    this.app.post("/api/login", async (req, res) => {
+      const { email, password } = req.body;
+      if (!email || !password) {
+        res.status(400).json({ error: "Email y contraseña requeridos" });
+        return;
+      }
+      
+      const token = await authManager.authenticate(email, password);
+      if (token) {
+        res.json({ token });
+      } else {
+        res.status(401).json({ error: "Credenciales inválidas" });
+      }
+    });
+
     this.app.get("/api/summary", authMiddleware, (_req, res) => {
       res.json(this.auditLogger.summary());
     });
@@ -152,8 +168,22 @@ export class WebServer {
   }
 
   private setupSocketIO(): void {
+    const authManager = new AuthManager();
+
+    this.io.use((socket, next) => {
+      const token = socket.handshake.auth.token;
+      if (!token) {
+        return next(new Error("Authentication error: Token missing"));
+      }
+      const user = authManager.verifyToken(token);
+      if (!user) {
+        return next(new Error("Authentication error: Invalid token"));
+      }
+      next();
+    });
+
     this.io.on("connection", (socket) => {
-      console.log(`[UI] Cliente conectado: ${socket.id}`);
+      console.log(`[UI] Cliente conectado (Autenticado): ${socket.id}`);
 
       // Enviar historial al conectarse
       socket.emit("history", this.events.slice(-50));

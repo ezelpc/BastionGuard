@@ -79,6 +79,30 @@ export class AuditLogger {
           is_active BOOLEAN DEFAULT true
         );
       `);
+
+      await this.pool?.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id UUID PRIMARY KEY,
+          tenant_id VARCHAR(255) NOT NULL,
+          email VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          role VARCHAR(50) DEFAULT 'admin',
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+
+      // Seeding del administrador por defecto
+      const userRes = await this.pool?.query(`SELECT COUNT(*) FROM users`);
+      if (userRes && parseInt(userRes.rows[0].count) === 0) {
+        // "admin123" hasheado con bcryptjs
+        const hash = "$2a$10$T8Z.X/r.L3i7t8I8G7yWjO7bKqZqjQf/ZqB/9F3zG7Q8y0zZ1x8s."; 
+        await this.pool?.query(
+          `INSERT INTO users (id, tenant_id, email, password_hash, role) VALUES ($1, $2, $3, $4, $5)`,
+          ['00000000-0000-0000-0000-000000000000', 'all', 'admin@bastionguard.com', hash, 'admin']
+        );
+        console.log(`[AUDIT] Usuario administrador por defecto creado.`);
+      }
+
       console.log(`[AUDIT] Tablas de PostgreSQL verificadas/creadas.`);
 
       // Load recent logs from DB into cache
