@@ -1,5 +1,5 @@
 import { DiagnosticEngine } from "../DiagnosticEngine";
-import { IncomingAlert } from "../../alert-receiver/types";
+import { IncomingAlert, Severity } from "../../alert-receiver/types";
 
 describe("DiagnosticEngine", () => {
   let engine: DiagnosticEngine;
@@ -11,7 +11,7 @@ describe("DiagnosticEngine", () => {
   const makeAlert = (service: string, severity = "critical"): IncomingAlert => ({
     id: "test-id",
     source: "prometheus",
-    severity: severity as any,
+    severity: severity as Severity,
     service,
     message: "Test alert",
     receivedAt: new Date().toISOString(),

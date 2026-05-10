@@ -50,7 +50,7 @@ export class DockerSwarmProvider {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
-        spec: newSpec as any,
+        spec: newSpec as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       });
 
       return `Servicio ${service} escalado a ${replicas} réplicas en modo ${mode}`;
@@ -80,7 +80,7 @@ export class DockerSwarmProvider {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
-        spec: newSpec as any,
+        spec: newSpec as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       });
 
       return `Servicio ${service} reiniciado con fuerza`;
@@ -115,7 +115,7 @@ export class DockerSwarmProvider {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await svc.update({
         version: info.Version.Index,
-        spec: newSpec as any,
+        spec: newSpec as any, // eslint-disable-line @typescript-eslint/no-explicit-any
       });
 
       return `Imagen de ${service} actualizada a ${fullImage}`;

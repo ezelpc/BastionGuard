@@ -83,7 +83,7 @@ export class TenantConfigManager {
     }
   }
 
-  public getEscalationTargets(tenantId: string): TenantConfig['escalationTargets'] {
+  public getEscalationTargets(tenantId: string): TenantConfig["escalationTargets"] {
     try {
       const tenant = this.getTenant(tenantId);
       return tenant.escalationTargets;
@@ -92,7 +92,7 @@ export class TenantConfigManager {
     }
   }
 
-  public getAIThreshold(tenantId: string): TenantConfig['aiThreshold'] {
+  public getAIThreshold(tenantId: string): TenantConfig["aiThreshold"] {
     try {
       const tenant = this.getTenant(tenantId);
       return tenant.aiThreshold;
