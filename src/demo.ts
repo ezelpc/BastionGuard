@@ -54,14 +54,14 @@ async function runDemo() {
 
   for (const [i, alert] of alerts.entries()) {
     console.log(`\n--- Simulando incidente ${i + 1}/3 ---`);
-    
+
     // Inyectar alerta directamente al receiver
     receiver["alerts"].push(alert);
     const cb = receiver["onAlertCallback"];
     if (cb) {
       await cb(alert);
     }
-    
+
     if (i < alerts.length - 1) {
       console.log(`\nEsperando 5 segundos antes de la siguiente alerta...`);
       await sleep(5000);
@@ -122,7 +122,11 @@ receiver.onAlert(async (alert) => {
     }
 
     if (decision.escalate) {
-      webServer.emitEscalation(TENANT_ID, decision.escalationReason ?? "Manual", report.service.name);
+      webServer.emitEscalation(
+        TENANT_ID,
+        decision.escalationReason ?? "Manual",
+        report.service.name
+      );
       await escalation.escalate(TENANT_ID, report, decision);
       audit.append("escalation", {
         tenantId: TENANT_ID,
@@ -172,8 +176,9 @@ receiver.onAlert(async (alert) => {
         });
       }
     }
-  } catch (err: any) {
-    console.error("Error en pipeline:", err.message);
+  } catch (err) {
+    const error = err as Error;
+    console.error("Error en pipeline:", error.message);
   }
 });
 
@@ -182,7 +187,7 @@ receiver.onAlert(async (alert) => {
     await tenantConfig.load();
     webServer.registerTenants(tenantConfig.getAllTenants());
     await webServer.start();
-    
+
     // Esperar un segundo para que el servidor levante y luego ejecutar demo
     setTimeout(runDemo, 1000);
   } catch (err) {

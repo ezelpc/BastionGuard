@@ -87,7 +87,7 @@ export class WebServer {
       }
       res.json({ ok: true, message: "Disparando alerta de demo..." });
       // Ejecutar asíncronamente para no bloquear la respuesta HTTP
-      this.demoTrigger().catch((err) => console.error("[DEMO]" , err));
+      this.demoTrigger().catch((err) => console.error("[DEMO]", err));
     });
   }
 
