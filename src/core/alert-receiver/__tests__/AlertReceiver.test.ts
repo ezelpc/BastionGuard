@@ -158,7 +158,7 @@ describe("AlertReceiver", () => {
 
     it("debe invocar callback onAlert al recibir alerta válida", async () => {
       const received: IncomingAlert[] = [];
-      receiver.onAlert((a) => received.push(a));
+      receiver.onAlert((a) => { received.push(a); });
 
       await httpRequest(port, "POST", "/webhook/prometheus", {
         alerts: [
