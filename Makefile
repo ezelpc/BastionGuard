@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-watch build build-watch test lint format clean docker-up docker-down docker-logs security-scan security-npm security-trivy security-semgrep deps-check git-hooks-setup
+.PHONY: help install setup setup-wsl2 dev dev-watch build build-watch test lint format clean docker-up docker-down docker-logs security-scan security-npm security-trivy security-semgrep deps-check git-hooks-setup
 
 TIMESTAMP := $(shell date +%Y-%m-%d_%H-%M-%S)
 DOCKER_IMAGE := bastionguard:latest
@@ -6,21 +6,26 @@ DOCKER_IMAGE := bastionguard:latest
 help:
 	@echo "BastionGuard Development Commands"
 	@echo "=================================="
-	@echo "Setup:"
-	@echo "  make install           - Install dependencies"
-	@echo "  make git-hooks-setup   - Setup security git hooks"
+	@echo "Setup & Init:"
+	@echo "  make setup             - Initialize project (.env, deps)"
+	@echo "  make setup-wsl2        - Check WSL2 + Docker configuration"
+	@echo "  make install           - Install npm dependencies"
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev               - Run development server"
 	@echo "  make dev-watch         - Run with auto-reload"
+	@echo "  make demo              - Run interactive demo"
 	@echo "  make build             - Build TypeScript"
 	@echo "  make build-watch       - Build with watching"
 	@echo ""
 	@echo "Quality:"
 	@echo "  make lint              - Check code quality"
-	@echo "  make format            - Format code"
-	@echo "  make type-check        - Type checking"
+	@echo "  make lint-fix          - Auto-fix linting issues"
+	@echo "  make format            - Format code with Prettier"
+	@echo "  make format-check      - Check formatting"
+	@echo "  make type-check        - Run TypeScript type checker"
 	@echo "  make test              - Run tests"
+	@echo "  make test:watch        - Run tests in watch mode"
 	@echo ""
 	@echo "Security (DevSecOps):"
 	@echo "  make security-scan     - Full security scan"
@@ -28,6 +33,31 @@ help:
 	@echo "  make security-trivy    - Trivy scan only"
 	@echo "  make security-semgrep  - Semgrep analysis only"
 	@echo "  make deps-check        - Check outdated dependencies"
+	@echo ""
+	@echo "Docker & Services:"
+	@echo "  make docker-up         - Start dev container"
+	@echo "  make docker-down       - Stop dev container"
+	@echo "  make docker-logs       - View container logs"
+	@echo "  make docker-shell      - Access container shell"
+	@echo "  make docker-build      - Build Docker image"
+	@echo "  make services-up       - Start postgres + redis"
+	@echo "  make services-down     - Stop services"
+	@echo "  make services-status   - Show services status"
+	@echo ""
+	@echo "Maintenance:"
+	@echo "  make clean             - Clean build artifacts"
+
+setup: setup-wsl2 install
+	@echo "✅ Setup complete! Run 'npm run dev' to start"
+
+setup-wsl2:
+	@bash scripts/setup-wsl2.sh || true
+
+install:
+	npm install
+
+setup:
+	bash scripts/setup.sh
 	@echo ""
 	@echo "Docker:"
 	@echo "  make docker-up         - Start dev container"

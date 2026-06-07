@@ -3,6 +3,7 @@ dotenv.config();
 
 import { AlertReceiver } from "./core/alert-receiver/AlertReceiver";
 import { DiagnosticEngine } from "./core/diagnostic-engine/DiagnosticEngine";
+import { ProviderFactory } from "./core/diagnostic-engine/data-sources/ProviderFactory";
 import { AIDecisionAgent } from "./core/ai-agent/AIDecisionAgent";
 import { ActionExecutor } from "./core/action-executor/ActionExecutor";
 import { EscalationManager } from "./core/escalation/EscalationManager";
@@ -21,7 +22,57 @@ process.on("unhandledRejection", (reason) => {
 const PORT = parseInt(process.env.API_PORT ?? "3000");
 const webServer = new WebServer(PORT);
 const receiver = new AlertReceiver(PORT, webServer.getExpressApp());
-const diagnostic = new DiagnosticEngine();
+
+// ============================================================
+// NUEVO: Inicializar providers reales (no mock)
+// ============================================================
+let diagnostic: DiagnosticEngine;
+try {
+  const providers = ProviderFactory.createAll({
+    metrics: {
+      type: process.env.METRICS_PROVIDER as any || "prometheus",
+      config: {
+        url: process.env.PROMETHEUS_URL || "http://localhost:9090",
+      },
+    },
+    logs: {
+      type: process.env.LOG_PROVIDER as any || "elasticsearch",
+      config: {
+        node: process.env.ELASTICSEARCH_URL || "http://localhost:9200",
+      },
+    },
+    state: {
+      type: process.env.STATE_PROVIDER as any || "kubernetes",
+      config: {
+        namespace: process.env.K8S_NAMESPACE || "default",
+      },
+    },
+  });
+
+  diagnostic = new DiagnosticEngine(
+    providers.metrics,
+    providers.logs,
+    providers.state,
+    process.env.K8S_NAMESPACE || "default"
+  );
+
+  console.log("✅ Providers inicializados");
+  console.log(`   - Metrics: ${process.env.METRICS_PROVIDER || "prometheus"}`);
+  console.log(`   - Logs: ${process.env.LOG_PROVIDER || "elasticsearch"}`);
+  console.log(`   - State: ${process.env.STATE_PROVIDER || "kubernetes"}`);
+} catch (error) {
+  console.error("⚠️  Error inicializando providers:", error);
+  console.log("⚠️  Continuando con providers de prueba...");
+  
+  // Fallback: crear con defaults (para testing sin services reales)
+  const providers = ProviderFactory.createDefaults();
+  diagnostic = new DiagnosticEngine(
+    providers.metrics,
+    providers.logs,
+    providers.state
+  );
+}
+
 const agent = new AIDecisionAgent();
 const executor = new ActionExecutor(true);
 const escalation = new EscalationManager();

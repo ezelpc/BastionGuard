@@ -81,13 +81,13 @@ describe("EscalationManager", () => {
       expect(event.message).toContain("Test reason");
     });
 
-    it("debe simular envío sin SLACK_WEBHOOK_URL", async () => {
+    it("debe simular envío sin canales configurados (fallback a consola)", async () => {
       const consoleSpy = jest.spyOn(console, "log").mockImplementation();
 
       await manager.escalate("empresa-a", makeReport(), makeDecision());
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining("SLACK_WEBHOOK_URL no configurado")
+        expect.stringContaining("Sin canales configurados")
       );
 
       consoleSpy.mockRestore();

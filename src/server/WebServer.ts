@@ -194,7 +194,7 @@ export class WebServer {
     });
 
     this.app.delete("/api/users/:userId", authMiddleware, requireAdmin, async (req, res) => {
-      const userId = req.params.userId;
+      const userId = req.params.userId as string;
       const adminTenant = (req as any).user.tenantId;
       
       const success = await authManager.deleteUser(adminTenant, userId);

@@ -10,6 +10,7 @@ import { TenantConfigManager } from "./config/TenantConfigManager";
 import { WebServer } from "./server/WebServer";
 import { AuditLogger } from "./core/audit/AuditLogger";
 import { AlertNormalizer } from "./core/alert-receiver/AlertNormalizer";
+import { ProviderFactory } from "./core/diagnostic-engine/data-sources/ProviderFactory";
 
 const PORT = parseInt(process.env.API_PORT ?? "3000");
 const webServer = new WebServer(PORT);
@@ -17,7 +18,13 @@ const tenantConfig = new TenantConfigManager(
   process.env.TENANTS_CONFIG ?? "src/config/tenants.yml"
 );
 const receiver = new AlertReceiver(PORT, webServer.getExpressApp(), tenantConfig);
-const diagnostic = new DiagnosticEngine();
+
+const providers = ProviderFactory.createDefaults();
+const diagnostic = new DiagnosticEngine(
+  providers.metrics,
+  providers.logs,
+  providers.state
+);
 const agent = new AIDecisionAgent();
 const executor = new ActionExecutor(true);
 const escalation = new EscalationManager();

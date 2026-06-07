@@ -1,13 +1,15 @@
 import express, { Application, Request, Response } from "express";
-import { AlertNormalizer } from "./AlertNormalizer";
-import { AlertSource, IncomingAlert } from "./types";
 import { TenantConfigManager } from "../../config/TenantConfigManager";
+import { AlertNormalizer } from "./AlertNormalizer";
+import { RateLimiter, createRateLimitMiddleware, getClientIdentifier } from "./RateLimiter";
+import { AlertSource, IncomingAlert } from "./types";
 
 export class AlertReceiver {
   private app: Application;
   private normalizer = new AlertNormalizer();
   private alerts: IncomingAlert[] = [];
   private onAlertCallback?: (alert: IncomingAlert) => void | Promise<void>;
+  private rateLimiter: RateLimiter;
 
   public constructor(
     private port: number = 3000,
@@ -18,6 +20,12 @@ export class AlertReceiver {
     if (!existingApp) {
       this.app.use(express.json());
     }
+
+    // Initialize rate limiter with env variables or defaults
+    const alertsPerMin = parseInt(process.env.RATE_LIMIT_ALERTS_PER_MINUTE || "100", 10);
+    const alertsPerHour = parseInt(process.env.RATE_LIMIT_ALERTS_PER_HOUR || "2000", 10);
+    this.rateLimiter = new RateLimiter(alertsPerMin, alertsPerHour);
+
     this.setupRoutes();
   }
 
@@ -47,50 +55,79 @@ export class AlertReceiver {
       res.json({ status: "ok", alerts_received: this.alerts.length });
     });
 
-    this.app.post("/webhook/:source", (req: Request, res: Response) => {
-      let authorizedTenantId: string | undefined;
-
-      if (this.tenantConfig && process.env.NODE_ENV === "production") {
-        const apiKey = req.headers["x-api-key"] as string;
-        const tenant = this.tenantConfig.getTenantByApiKey(apiKey);
-        if (!tenant) {
-          res.status(401).json({ error: "Unauthorized: Invalid API Key" });
-          return;
+    // Apply rate limiting middleware to webhook endpoint
+    this.app.post(
+      "/webhook/:source",
+      createRateLimitMiddleware(this.rateLimiter, (req) => {
+        // Extract tenant ID from API key or IP
+        if (this.tenantConfig && process.env.NODE_ENV === "production") {
+          const apiKey = req.headers["x-api-key"] as string;
+          const tenant = this.tenantConfig.getTenantByApiKey(apiKey);
+          if (tenant) {
+            return getClientIdentifier(req, tenant.id);
+          }
         }
-        authorizedTenantId = tenant.id;
-      }
+        return getClientIdentifier(req);
+      }),
+      (req: Request, res: Response) => {
+        let authorizedTenantId: string | undefined;
 
-      const source = req.params.source as AlertSource;
-      const payload = req.body as Record<string, unknown>;
-
-      console.log(`\n[ALERT] Recibido desde: ${source}`);
-
-      try {
-        const alert = this.normalizer.normalize(source, payload);
-        if (authorizedTenantId) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (alert as any).tenantId = authorizedTenantId;
+        if (this.tenantConfig && process.env.NODE_ENV === "production") {
+          const apiKey = req.headers["x-api-key"] as string;
+          const tenant = this.tenantConfig.getTenantByApiKey(apiKey);
+          if (!tenant) {
+            res.status(401).json({ error: "Unauthorized: Invalid API Key" });
+            return;
+          }
+          authorizedTenantId = tenant.id;
         }
-        this.alerts.push(alert);
 
-        console.log(`[ALERT] Normalizado:`, {
-          id: alert.id,
-          service: alert.service,
-          severity: alert.severity,
-          message: alert.message,
-        });
+        const source = req.params.source as AlertSource;
+        const payload = req.body as Record<string, unknown>;
 
-        if (this.onAlertCallback) {
-          Promise.resolve(this.onAlertCallback(alert)).catch((err) => {
-            console.error(`[ALERT] Error en pipeline:`, err);
+        console.log(`\n[ALERT] Recibido desde: ${source}`);
+
+        try {
+          const alert = this.normalizer.normalize(source, payload);
+          if (authorizedTenantId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            (alert as any).tenantId = authorizedTenantId;
+          }
+          this.alerts.push(alert);
+
+          console.log(`[ALERT] Normalizado:`, {
+            id: alert.id,
+            service: alert.service,
+            severity: alert.severity,
+            message: alert.message,
           });
-        }
 
-        res.status(200).json({ received: true, alertId: alert.id });
-      } catch (err) {
-        console.error(`[ALERT] Error normalizando:`, err);
-        res.status(400).json({ received: false, error: String(err) });
+          if (this.onAlertCallback) {
+            Promise.resolve(this.onAlertCallback(alert)).catch((err) => {
+              console.error(`[ALERT] Error en pipeline:`, err);
+            });
+          }
+
+          res.status(200).json({ received: true, alertId: alert.id });
+        } catch (err) {
+          console.error(`[ALERT] Error normalizando:`, err);
+          res.status(400).json({ received: false, error: String(err) });
+        }
       }
-    });
+    );
+  }
+
+  /**
+   * Get rate limiter instance for testing or custom usage
+   */
+  public getRateLimiter(): RateLimiter {
+    return this.rateLimiter;
+  }
+
+  /**
+   * Cleanup resources
+   */
+  public destroy(): void {
+    this.rateLimiter.destroy();
   }
 }

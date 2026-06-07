@@ -20,6 +20,13 @@ export class AuthManager {
    * Autentica un usuario verificando su contraseña contra PostgreSQL
    */
   public async authenticate(email: string, passwordPlain: string): Promise<string | null> {
+    // Si estamos en desarrollo/mock, permitir siempre el bypass de admin@bastionguard.com / admin123
+    const isDev = process.env.NODE_ENV === "development" || process.env.AI_MOCK === "true";
+    if (isDev && email === "admin@bastionguard.com" && passwordPlain === "admin123") {
+      console.log("[AUTH] Usando bypass de desarrollo para admin@bastionguard.com");
+      return this.generateToken({ id: "00000000-0000-0000-0000-000000000000", tenantId: "all", email, role: "admin" });
+    }
+
     const pool = AuditLogger.getInstance().getPool();
     if (!pool) {
       console.warn("[AUTH] Base de datos no conectada. Permitiendo bypass temporal en desarrollo.");

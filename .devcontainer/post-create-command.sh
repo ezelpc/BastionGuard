@@ -3,6 +3,11 @@ set -e
 
 echo "🚀 Iniciando post-create setup para BastionGuard..."
 
+# ── 0. Corregir permisos de volúmenes (si fueron creados por root) ──
+echo "🔐 Corrigiendo permisos..."
+sudo chown -R node:node /workspace/node_modules || true
+sudo chown node:node /workspace || true
+
 # ── 1. Instalar dependencias del proyecto ──────────────────
 echo "📥 Instalando dependencias..."
 npm install

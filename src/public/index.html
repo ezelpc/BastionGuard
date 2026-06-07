@@ -3,16 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BastionGuard 🛡️</title>
+  <title>BastionGuard — AI Autonomous Remediation 🛡️</title>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+  
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-main: #060a13;
+      --bg-panel: rgba(10, 17, 32, 0.75);
+      --bg-card: rgba(17, 28, 52, 0.55);
+      --border-glow: rgba(0, 195, 255, 0.08);
+      --border-white: rgba(255, 255, 255, 0.06);
+      
+      --neon-cyan: #00c3ff;
+      --neon-blue: #0062ff;
+      --neon-green: #00ffa3;
+      --neon-red: #ff477e;
+      --neon-purple: #bb86fc;
+      --neon-orange: #ff9f43;
+      
+      --text-main: #e2e8f0;
+      --text-muted: #8492a6;
+      --text-dark: #0f172a;
+      
+      --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+      --font-mono: 'Fira Code', monospace;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+    }
 
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #0a0f1a;
-      color: #e2e8f0;
+      font-family: var(--font-sans);
+      background: var(--bg-main);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(0, 195, 255, 0.05) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(187, 134, 252, 0.04) 0px, transparent 50%);
+      color: var(--text-main);
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
     /* HEADER */
@@ -20,308 +53,778 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 32px;
-      border-bottom: 1px solid rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.02);
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border-white);
+      background: rgba(8, 14, 27, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
     }
 
     .logo {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: -0.02em;
+      gap: 12px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #ffffff, #88aaff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
 
     .logo-icon {
-      width: 32px; height: 32px;
-      background: linear-gradient(135deg, #00c3ff, #00ffa3);
-      border-radius: 8px;
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+      border-radius: 10px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
+      font-size: 18px;
+      color: white;
+      box-shadow: 0 0 15px rgba(0, 195, 255, 0.3);
+      -webkit-text-fill-color: initial;
     }
 
     .status-badge {
       display: flex; align-items: center; gap: 8px;
-      font-size: 13px; color: rgba(255,255,255,0.5);
+      font-size: 13px; color: var(--text-muted);
     }
 
     .dot {
       width: 8px; height: 8px; border-radius: 50%;
-      background: #00ffa3;
-      box-shadow: 0 0 8px #00ffa3;
+      background: var(--neon-green);
+      box-shadow: 0 0 10px var(--neon-green);
       animation: pulse 2s infinite;
     }
 
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 6px #00ffa3; }
-      50% { box-shadow: 0 0 14px #00ffa3; }
+      0%, 100% { box-shadow: 0 0 6px var(--neon-green); transform: scale(1); }
+      50% { box-shadow: 0 0 14px var(--neon-green); transform: scale(1.2); }
     }
 
-    /* METRICS */
+    .btn-logout {
+      margin-left: 16px;
+      padding: 6px 12px;
+      background: rgba(255, 71, 126, 0.1);
+      border: 1px solid rgba(255, 71, 126, 0.25);
+      border-radius: 6px;
+      color: var(--neon-red);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-logout:hover {
+      background: var(--neon-red);
+      color: var(--text-dark);
+      box-shadow: 0 0 12px rgba(255, 71, 126, 0.3);
+    }
+
+    /* METRICS BAR */
     .metrics {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      border-bottom: 1px solid var(--border-white);
+      background: rgba(6, 10, 19, 0.4);
     }
 
     .metric {
-      padding: 20px 32px;
-      border-right: 1px solid rgba(255,255,255,0.07);
+      padding: 24px 32px;
+      border-right: 1px solid var(--border-white);
+      transition: background 0.3s;
     }
-
+    .metric:hover {
+      background: rgba(255, 255, 255, 0.01);
+    }
     .metric:last-child { border-right: none; }
 
     .metric-value {
-      font-size: 28px;
-      font-weight: 700;
-      font-family: 'Courier New', monospace;
-      letter-spacing: -0.03em;
+      font-size: 32px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      letter-spacing: -0.04em;
+      line-height: 1.1;
     }
 
     .metric-label {
       font-size: 12px;
-      color: rgba(255,255,255,0.4);
-      margin-top: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      margin-top: 6px;
     }
 
     .metric-sub {
       font-size: 11px;
-      margin-top: 4px;
-      opacity: 0.7;
+      margin-top: 3px;
+      opacity: 0.65;
+    }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 24px;
+      padding: 0 32px;
+      border-bottom: 1px solid var(--border-white);
+      background: rgba(8, 14, 27, 0.4);
+    }
+    .tab {
+      padding: 18px 4px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      color: var(--neon-cyan);
+      border-bottom-color: var(--neon-cyan);
+      text-shadow: 0 0 10px rgba(0, 195, 255, 0.2);
+    }
+    .tab:hover:not(.active) {
+      color: var(--text-main);
+    }
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
     }
 
     /* LAYOUT */
     .main {
       display: grid;
-      grid-template-columns: 1fr 380px;
-      height: calc(100vh - 121px);
+      grid-template-columns: 1fr 420px;
+      height: calc(100vh - 188px);
     }
 
-    /* FEED */
+    /* FEED & SIDEBAR */
     .feed {
-      padding: 24px;
+      padding: 32px;
       overflow-y: auto;
-      border-right: 1px solid rgba(255,255,255,0.07);
+      border-right: 1px solid var(--border-white);
+    }
+    .feed-title-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .feed-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+    .feed-actions {
+      display: flex;
+      gap: 12px;
     }
 
-    .feed-title {
-      font-size: 11px;
+    .sidebar {
+      padding: 32px;
+      overflow-y: auto;
+      background: rgba(5, 8, 17, 0.3);
+    }
+    .sidebar-section {
+      margin-bottom: 36px;
+    }
+    .sidebar-title {
+      font-size: 12px;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(255,255,255,0.3);
-      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--text-muted);
+      font-weight: 700;
       margin-bottom: 16px;
     }
 
-    /* EVENT CARD */
-    .event-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 12px;
-      animation: slideIn 0.3s ease;
-      transition: border-color 0.2s;
+    /* BUTTONS */
+    .btn-primary {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 12px rgba(0, 195, 255, 0.2);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 18px rgba(0, 195, 255, 0.4);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border-white);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(255, 255, 255, 0.1);
     }
 
-    .event-card:hover {
-      border-color: rgba(255,255,255,0.15);
+    /* INCIDENT PIPELINE CARD */
+    .incident-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-white);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+      animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .incident-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--neon-red), var(--neon-orange));
+    }
+    .incident-card.resolved::before {
+      background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+    }
+    .incident-card.escalated::before {
+      background: linear-gradient(90deg, var(--neon-red), #e056fd);
     }
 
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-8px); }
-      to { opacity: 1; transform: translateY(0); }
+    .incident-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 20px;
+    }
+    .incident-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .incident-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .incident-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
     }
 
-    .event-header {
+    /* COST COUNTER */
+    .downtime-cost-box {
+      background: rgba(255, 71, 126, 0.08);
+      border: 1px solid rgba(255, 71, 126, 0.2);
+      border-radius: 10px;
+      padding: 10px 16px;
+      text-align: right;
+      min-width: 160px;
+    }
+    .incident-card.resolved .downtime-cost-box {
+      background: rgba(0, 255, 163, 0.06);
+      border-color: rgba(0, 255, 163, 0.2);
+    }
+    .cost-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+    }
+    .cost-value {
+      font-size: 20px;
+      font-weight: 800;
+      font-family: var(--font-mono);
+      color: var(--neon-red);
+    }
+    .incident-card.resolved .cost-value {
+      color: var(--neon-green);
+    }
+
+    /* HORIZONTAL PIPELINE FLOW */
+    .pipeline-flow {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin: 28px 0;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 16px 20px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+    }
+    .flow-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      position: relative;
+      z-index: 2;
+    }
+    .flow-connector {
+      height: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      flex-grow: 1;
+      margin: 0 -15px;
+      margin-top: -24px;
+      z-index: 1;
+      transition: background-color 0.5s;
+    }
+    .flow-connector.active {
+      background: linear-gradient(90deg, var(--neon-cyan), var(--neon-blue));
+    }
+    .flow-connector.completed {
+      background: var(--neon-green);
+    }
+    .flow-connector.failed {
+      background: var(--neon-red);
     }
 
-    .event-type {
-      display: flex; align-items: center; gap: 8px;
-      font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.05em;
+    .step-circle {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #111a2e;
+      border: 2px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      transition: all 0.4s;
     }
-
-    .event-time {
+    .step-circle.pending {
+      color: var(--text-muted);
+    }
+    .step-circle.active {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 15px rgba(0, 195, 255, 0.4);
+      background: rgba(0, 195, 255, 0.15);
+      animation: pulse-ring 1.5s infinite;
+    }
+    .step-circle.completed {
+      border-color: var(--neon-green);
+      background: rgba(0, 255, 163, 0.1);
+      color: var(--neon-green);
+      box-shadow: 0 0 10px rgba(0, 255, 163, 0.15);
+    }
+    .step-circle.failed {
+      border-color: var(--neon-red);
+      background: rgba(255, 71, 126, 0.1);
+      color: var(--neon-red);
+      box-shadow: 0 0 10px rgba(255, 71, 126, 0.15);
+    }
+    .step-label {
       font-size: 11px;
-      color: rgba(255,255,255,0.3);
-      font-family: monospace;
-    }
-
-    .event-body {
-      font-size: 13px;
-      color: rgba(255,255,255,0.7);
-      line-height: 1.5;
-    }
-
-    .event-service {
-      font-family: monospace;
-      background: rgba(255,255,255,0.06);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 20px;
-      font-size: 10px;
       font-weight: 700;
+      color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.05em;
     }
+    .flow-step.active .step-label { color: var(--neon-cyan); }
+    .flow-step.completed .step-label { color: var(--neon-green); }
+    .flow-step.failed .step-label { color: var(--neon-red); }
 
-    .badge-critical { background: rgba(255,68,68,0.15); color: #ff4444; border: 1px solid rgba(255,68,68,0.3); }
-    .badge-high { background: rgba(255,153,0,0.15); color: #ff9900; border: 1px solid rgba(255,153,0,0.3); }
-    .badge-medium { background: rgba(255,217,61,0.15); color: #ffd93d; border: 1px solid rgba(255,217,61,0.3); }
-    .badge-low { background: rgba(0,255,163,0.15); color: #00ffa3; border: 1px solid rgba(0,255,163,0.3); }
-    .badge-success { background: rgba(0,255,163,0.15); color: #00ffa3; border: 1px solid rgba(0,255,163,0.2); }
-    .badge-escalation { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); }
-
-    .causes {
-      margin-top: 8px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 8px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.5);
+    @keyframes pulse-ring {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 195, 255, 0.4); }
+      70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(0, 195, 255, 0); }
+      100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 195, 255, 0); }
     }
 
-    .cause-item::before { content: "• "; }
-
-    .confidence-bar {
-      margin-top: 8px;
-      height: 4px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 2px;
-      overflow: hidden;
+    /* CARD SUB-SECTIONS */
+    .incident-details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
     }
 
-    .confidence-fill {
-      height: 100%;
-      border-radius: 2px;
-      transition: width 0.5s ease;
+    .details-panel {
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 10px;
+      padding: 16px;
     }
-
-    /* SIDEBAR */
-    .sidebar {
-      padding: 24px;
-      overflow-y: auto;
-    }
-
-    .sidebar-section {
-      margin-bottom: 28px;
-    }
-
-    .sidebar-title {
+    .panel-title {
       font-size: 11px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: rgba(255,255,255,0.3);
-      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
       margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* TENANT CARD */
+    /* BLAST RADIUS VISUALIZER */
+    .blast-radius-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+    }
+    .blast-node {
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      text-align: center;
+      position: relative;
+    }
+    .blast-node.root {
+      background: rgba(255, 71, 126, 0.15);
+      border-color: var(--neon-red);
+      color: var(--neon-red);
+      font-weight: 700;
+      box-shadow: 0 0 10px rgba(255, 71, 126, 0.1);
+    }
+    .blast-node.impacted {
+      background: rgba(255, 159, 67, 0.1);
+      border-color: var(--neon-orange);
+      color: var(--neon-orange);
+    }
+    .blast-node.critico {
+      background: rgba(255, 71, 126, 0.1);
+      border-color: #ff4757;
+      color: #ff4757;
+    }
+    .blast-node.ok {
+      background: rgba(0, 255, 163, 0.05);
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+    }
+    
+    .blast-connector-line {
+      height: 20px;
+      width: 2px;
+      background: rgba(255, 255, 255, 0.08);
+      position: relative;
+    }
+    .blast-connector-fork {
+      display: flex;
+      gap: 40px;
+      position: relative;
+      margin-top: 10px;
+    }
+    .blast-connector-fork::before {
+      content: '';
+      position: absolute;
+      top: -10px;
+      left: 20px;
+      right: 20px;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    /* FEEDBACK LOOP CONTAINER */
+    .feedback-box {
+      margin-top: 20px;
+      background: rgba(0, 255, 163, 0.02);
+      border: 1px solid rgba(0, 255, 163, 0.08);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .feedback-prompt {
+      font-size: 13px;
+      color: var(--text-main);
+    }
+    .feedback-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-feedback {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border-white);
+      border-radius: 6px;
+      color: var(--text-main);
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-feedback:hover {
+      background: rgba(0, 255, 163, 0.1);
+      border-color: var(--neon-green);
+      color: var(--neon-green);
+    }
+
+    /* COGNITIVE REASONING */
+    .reasoning-bubble {
+      background: rgba(187, 134, 252, 0.05);
+      border-left: 3px solid var(--neon-purple);
+      padding: 10px 14px;
+      border-radius: 0 8px 8px 0;
+      font-size: 13px;
+      font-style: italic;
+      color: #dfcdff;
+      line-height: 1.45;
+    }
+
+    /* LOGS/METRICS PREVIEWS */
+    .log-preview-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .log-preview-entry {
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255,255,255,0.02);
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .log-preview-entry.error {
+      color: var(--neon-red);
+      background: rgba(255, 71, 126, 0.04);
+    }
+
+    /* OTHER ELEMS */
+    .badge {
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      border: 1px solid transparent;
+    }
+    .badge-critical { background: rgba(255,71,126,0.12); color: var(--neon-red); border-color: rgba(255,71,126,0.3); }
+    .badge-high { background: rgba(255,159,67,0.12); color: var(--neon-orange); border-color: rgba(255,159,67,0.3); }
+    .badge-medium { background: rgba(255,217,61,0.12); color: #ffd93d; border-color: rgba(255,217,61,0.3); }
+    .badge-low { background: rgba(0,255,163,0.12); color: var(--neon-green); border-color: rgba(0,255,163,0.3); }
+    .badge-success { background: rgba(0,255,163,0.12); color: var(--neon-green); border-color: rgba(0,255,163,0.2); }
+    .badge-escalation { background: rgba(224, 86, 253, 0.12); color: #e056fd; border-color: rgba(224, 86, 253, 0.3); }
+
     .tenant-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--border-white);
       border-radius: 10px;
       padding: 14px;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      transition: all 0.2s;
     }
-
+    .tenant-card:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+    }
     .tenant-name {
       font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 6px;
+      font-weight: 700;
+      margin-bottom: 4px;
     }
-
     .tenant-meta {
       font-size: 11px;
-      color: rgba(255,255,255,0.4);
+      color: var(--text-muted);
     }
 
-    /* AUDIT LOG */
     .audit-item {
       display: flex;
       align-items: flex-start;
-      gap: 10px;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.05);
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
       font-size: 12px;
     }
-
     .audit-item:last-child { border-bottom: none; }
-
-    .audit-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
-
-    .audit-text { color: rgba(255,255,255,0.6); line-height: 1.4; }
-
+    .audit-icon { font-size: 15px; flex-shrink: 0; margin-top: 1px; }
+    .audit-text { color: var(--text-main); line-height: 1.45; }
     .audit-time {
-      font-family: monospace;
+      font-family: var(--font-mono);
       font-size: 10px;
-      color: rgba(255,255,255,0.25);
-      margin-top: 2px;
+      color: rgba(255,255,255,0.2);
+      margin-top: 4px;
     }
 
-    /* EMPTY STATE */
     .empty {
       text-align: center;
-      padding: 60px 20px;
-      color: rgba(255,255,255,0.2);
+      padding: 80px 20px;
+      color: var(--text-muted);
+      border: 2px dashed rgba(255, 255, 255, 0.03);
+      border-radius: 16px;
     }
+    .empty-icon { font-size: 44px; margin-bottom: 16px; opacity: 0.4; }
+    .empty-text { font-size: 14px; line-height: 1.5; }
 
-    .empty-icon { font-size: 40px; margin-bottom: 12px; }
-    .empty-text { font-size: 14px; }
+    /* MODAL POPUPS */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(4, 7, 13, 0.8);
+      backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 99999;
+      animation: fadeIn 0.2s ease-out;
+    }
+    .modal-card {
+      background: #0b1120;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 36px;
+      border-radius: 20px;
+      width: 100%; max-width: 680px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .modal-content {
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-main);
+      flex-grow: 1;
+      padding-right: 8px;
+    }
+    .modal-content h1, .modal-content h2, .modal-content h3 {
+      color: var(--neon-cyan);
+      margin: 16px 0 8px;
+      font-weight: 700;
+    }
+    .modal-content h1 { font-size: 18px; margin-top: 0; }
+    .modal-content h2 { font-size: 15px; }
+    .modal-content ul {
+      margin-left: 20px;
+      margin-bottom: 12px;
+    }
+    .modal-content code {
+      font-family: var(--font-mono);
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .modal-content pre {
+      background: rgba(0,0,0,0.3);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin-bottom: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+    }
+    .close-btn {
+      background: none; border: none; font-size: 24px; color: var(--text-muted); cursor: pointer;
+    }
+    .close-btn:hover { color: white; }
+
+    /* ADMIN & CALENDAR FORM ELEMENTS */
+    .admin-panel {
+      padding: 32px;
+      animation: fadeIn 0.3s ease;
+    }
+    .table {
+      width: 100%; border-collapse: collapse; margin-top: 16px;
+    }
+    .table th, .table td {
+      padding: 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-size: 13px;
+    }
+    .table th {
+      color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+    .btn-danger {
+      background: rgba(255,71,126,0.12); color: var(--neon-red); border: 1px solid rgba(255,71,126,0.25);
+      padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-danger:hover {
+      background: var(--neon-red);
+      color: var(--text-dark);
+      box-shadow: 0 0 10px rgba(255,71,126,0.2);
+    }
 
     /* LOGIN VIEW */
     #login-view {
       position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: #0a0f1a;
+      background: var(--bg-main);
+      background-image: radial-gradient(circle at center, #0f1c34 0%, #050811 100%);
       display: flex; align-items: center; justify-content: center;
-      z-index: 9999;
+      z-index: 99999;
+      animation: fadeIn 0.4s ease;
     }
-
     .login-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
-      backdrop-filter: blur(10px);
-      padding: 40px;
-      border-radius: 16px;
-      width: 100%; max-width: 400px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      background: rgba(8, 14, 27, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      padding: 48px;
+      border-radius: 20px;
+      width: 100%; max-width: 440px;
+      box-shadow: 0 30px 60px rgba(0,0,0,0.5);
       text-align: center;
     }
-
     .login-input {
-      width: 100%; padding: 12px 16px; margin-bottom: 16px;
-      background: rgba(0,0,0,0.2); border: 1px solid rgba(255,255,255,0.1);
+      width: 100%; padding: 14px 18px; margin-bottom: 16px;
+      background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.06);
       border-radius: 8px; color: white; font-family: inherit; font-size: 14px;
-      outline: none; transition: border-color 0.2s;
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
-
-    .login-input:focus { border-color: #00c3ff; }
-
+    .login-input:focus { 
+      border-color: var(--neon-cyan); 
+      box-shadow: 0 0 10px rgba(0, 195, 255, 0.2);
+    }
     .login-btn {
-      width: 100%; padding: 12px; border: none; border-radius: 8px;
-      background: linear-gradient(135deg, #00c3ff, #00ffa3);
-      color: #0a0f1a; font-weight: 700; font-size: 14px;
-      cursor: pointer; transition: transform 0.1s; margin-top: 8px;
+      width: 100%; padding: 14px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue));
+      color: white; font-weight: 700; font-size: 14px;
+      cursor: pointer; transition: all 0.2s; margin-top: 10px;
+      box-shadow: 0 4px 15px rgba(0, 195, 255, 0.2);
     }
+    .login-btn:hover { 
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0, 195, 255, 0.35);
+    }
+    .login-btn:active { transform: translateY(0); }
 
-    .login-btn:active { transform: scale(0.98); }
+    /* ANIMATIONS */
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
 
     /* SCROLLBAR */
-    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
   </style>
 </head>
 <body>
@@ -329,14 +832,27 @@
 <!-- LOGIN VIEW -->
 <div id="login-view">
   <div class="login-card">
-    <div class="logo-icon" style="margin: 0 auto 20px; width: 48px; height: 48px; font-size: 24px;">🛡</div>
-    <h2 style="margin-bottom: 8px; letter-spacing: -0.02em;">BastionGuard</h2>
-    <p style="font-size: 13px; color: rgba(255,255,255,0.4); margin-bottom: 32px;">Inicia sesión para acceder al panel de control</p>
+    <div class="logo-icon" style="margin: 0 auto 24px; width: 54px; height: 54px; font-size: 26px;">🛡️</div>
+    <h2 style="margin-bottom: 8px; font-weight: 800; letter-spacing: -0.03em; font-size: 24px;">BastionGuard</h2>
+    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 36px;">Autonomous Remediation & Root Cause Intelligence</p>
     
-    <input type="email" id="login-email" class="login-input" placeholder="Correo electrónico" autocomplete="email">
-    <input type="password" id="login-password" class="login-input" placeholder="Contraseña" autocomplete="current-password">
+    <input type="email" id="login-email" class="login-input" placeholder="admin@bastionguard.com" autocomplete="email" value="admin@bastionguard.com">
+    <input type="password" id="login-password" class="login-input" placeholder="Contraseña" autocomplete="current-password" value="admin123">
     <button class="login-btn" onclick="performLogin()">Ingresar al Sistema</button>
-    <div id="login-error" style="color: #ff4444; font-size: 12px; margin-top: 16px; display: none;"></div>
+    <div id="login-error" style="color: var(--neon-red); font-size: 12px; margin-top: 20px; display: none; background: rgba(255,71,126,0.08); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,71,126,0.15);"></div>
+  </div>
+</div>
+
+<!-- POST-MORTEM MODAL -->
+<div id="rca-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 style="font-weight:800; font-size: 16px; display:flex; align-items:center; gap:8px;">📝 <span>Generador Post-Mortem IA</span></h3>
+      <button class="close-btn" onclick="closeRCAModal()">&times;</button>
+    </div>
+    <div class="modal-content" id="rca-modal-body">
+      <!-- Se inyecta post mortem markdown renderizado -->
+    </div>
   </div>
 </div>
 
@@ -344,92 +860,146 @@
 <div id="dashboard-view" style="display: none;">
 <header>
   <div class="logo">
-    <div class="logo-icon">🛡</div>
+    <div class="logo-icon">🛡️</div>
     <div>
       <div>BastionGuard</div>
-      <div style="font-size:10px;font-weight:400;color:rgba(255,255,255,0.3);letter-spacing:0.1em;text-transform:uppercase">AI Auto-Remediation</div>
+      <div style="font-size:9px;font-weight:700;color:var(--text-muted);letter-spacing:0.15em;text-transform:uppercase;margin-top:-2px">Autonomous AI Remediation</div>
     </div>
   </div>
+  
   <div class="status-badge">
-    <button id="btn-demo" onclick="triggerDemo()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#00c3ff,#00ffa3);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Dispara una alerta de prueba">
-      ⚡ Simular incidente
-    </button>
-    <button id="btn-rca" onclick="triggerRCA()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#a78bfa,#c084fc);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Generar RCA Post-Mortem de IA">
-      📝 Generar RCA (IA)
-    </button>
-    <button id="btn-oncall" onclick="manageOnCall()" style="margin-right:16px;padding:6px 14px;background:linear-gradient(135deg,#f59e0b,#fbbf24);border:none;border-radius:6px;color:#0a0f1a;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:0.04em" title="Gestionar Guardias (On-Call)">
-      📞 Guardias
-    </button>
-    <select id="tenant-filter" onchange="filterByTenant()" style="margin-right:16px;padding:5px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:6px;color:#e2e8f0;font-size:12px">
+    <select id="tenant-filter" onchange="filterByTenant()" style="margin-right:16px;padding:6px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border-white);border-radius:6px;color:#e2e8f0;font-size:12px;outline:none;font-weight:600;cursor:pointer;">
       <option value="all">Todos los tenants</option>
     </select>
-    <div class="dot" id="conn-dot" style="background:#ff4444;box-shadow:0 0 8px #ff4444"></div>
-    <span id="conn-status">Conectando...</span>
-    <span style="margin-left:12px;font-family:monospace" id="clock"></span>
-    <button onclick="performLogout()" style="margin-left:16px;padding:4px 8px;background:rgba(255,68,68,0.1);border:1px solid rgba(255,68,68,0.3);border-radius:4px;color:#ff4444;font-size:11px;cursor:pointer;">Salir</button>
+    <div class="dot" id="conn-dot" style="background:var(--neon-red);box-shadow:0 0 8px var(--neon-red)"></div>
+    <span id="conn-status" style="font-weight:600;font-size:12px;">Conectando...</span>
+    <span style="margin-left:16px;font-family:var(--font-mono);font-size:12px;color:rgba(255,255,255,0.4)" id="clock"></span>
+    <button onclick="performLogout()" class="btn-logout">Salir</button>
   </div>
 </header>
 
-<div class="metrics">
-  <div class="metric">
-    <div class="metric-value" id="m-alerts" style="color:#00c3ff">0</div>
-    <div class="metric-label">Alertas recibidas</div>
-    <div class="metric-sub" style="color:#00c3ff">Esta sesión</div>
-  </div>
-  <div class="metric">
-    <div class="metric-value" id="m-resolved" style="color:#00ffa3">0</div>
-    <div class="metric-label">Auto-resueltas</div>
-    <div class="metric-sub" style="color:#00ffa3">Sin intervención humana</div>
-  </div>
-  <div class="metric">
-    <div class="metric-value" id="m-escalated" style="color:#ff6b6b">0</div>
-    <div class="metric-label">Escaladas</div>
-    <div class="metric-sub" style="color:#ff6b6b">On-call notificado</div>
-  </div>
-  <div class="metric">
-    <div class="metric-value" id="m-confidence" style="color:#ffd93d">-</div>
-    <div class="metric-label">Confianza promedio IA</div>
-    <div class="metric-sub" style="color:#ffd93d">Últimas decisiones</div>
-  </div>
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('tab-monitoring')">Monitoreo y Pipeline</div>
+  <div class="tab" onclick="switchTab('tab-calendar')">Calendario de Guardias</div>
+  <div class="tab" id="tab-btn-users" style="display:none;" onclick="switchTab('tab-users')">Gestión de Usuarios</div>
 </div>
 
-<div class="main">
-  <!-- FEED -->
-  <div class="feed">
-    <div class="feed-title">Pipeline en tiempo real</div>
-    <div id="feed-container">
-      <div class="empty">
-        <div class="empty-icon">📡</div>
-        <div class="empty-text">Esperando alertas...<br><br>
-          <code style="font-size:11px;color:rgba(255,255,255,0.3)">
-            curl -X POST http://localhost:3000/webhook/prometheus \<br>
-            &nbsp;&nbsp;-H "Content-Type: application/json" \<br>
-            &nbsp;&nbsp;-d '{"alerts":[{"labels":{"severity":"critical","job":"api-gateway"},"annotations":{"summary":"Latencia alta"}}]}'
-          </code>
+<div id="tab-monitoring" class="tab-content active">
+  <div class="metrics">
+    <div class="metric">
+      <div class="metric-value" id="m-alerts" style="color:var(--neon-cyan)">0</div>
+      <div class="metric-label">Alertas recibidas</div>
+      <div class="metric-sub" style="color:var(--neon-cyan)">Esta sesión</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" id="m-resolved" style="color:var(--neon-green)">0</div>
+      <div class="metric-label">Auto-resueltas</div>
+      <div class="metric-sub" style="color:var(--neon-green)">Sin intervención humana</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" id="m-escalated" style="color:var(--neon-red)">0</div>
+      <div class="metric-label">Escaladas</div>
+      <div class="metric-sub" style="color:var(--neon-red)">Ingenieros on-call</div>
+    </div>
+    <div class="metric">
+      <div class="metric-value" id="m-confidence" style="color:var(--neon-purple)">-</div>
+      <div class="metric-label">Confianza promedio IA</div>
+      <div class="metric-sub" style="color:var(--neon-purple)">Últimos incidentes</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- FEED (INCIPIENT REMEDIATION CARDS) -->
+    <div class="feed">
+      <div class="feed-title-bar">
+        <div class="feed-title">Cola de Incidentes Activos y Remediaciones</div>
+        <div class="feed-actions">
+          <button class="btn-secondary" id="btn-rca" onclick="triggerRCA()">📝 Generar RCA (IA)</button>
+          <button class="btn-primary" id="btn-demo" onclick="triggerDemo()">⚡ Simular incidente</button>
+        </div>
+      </div>
+      
+      <div id="feed-container">
+        <div class="empty">
+          <div class="empty-icon">📡</div>
+          <div class="empty-text">
+            No hay incidentes activos en este momento.<br>
+            <span style="font-size: 12px; opacity: 0.7; display: block; margin-top: 8px;">Haz clic en <strong>Simular incidente</strong> para ver el motor en acción.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-title">Tenants activos</div>
+        <div id="tenants-container">
+          <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0">Cargando config...</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-title">Bitácora de Auditoría (Audit Log)</div>
+        <div id="audit-container">
+          <div style="font-size:12px;color:var(--text-muted);text-align:center;padding:20px 0">
+            Sin acciones registradas en esta sesión.
+          </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- SIDEBAR -->
-  <div class="sidebar">
-    <div class="sidebar-section">
-      <div class="sidebar-title">Tenants activos</div>
-      <div id="tenants-container">
-        <div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:12px 0">Cargando...</div>
+<div id="tab-calendar" class="tab-content admin-panel">
+  <div style="display:flex; gap: 32px;">
+    <div style="flex:1;">
+      <h3 style="margin-bottom:16px; font-weight:800; letter-spacing:-0.01em; color:#f59e0b;">Calendario Visual de Guardias</h3>
+      <div id="calendar-grid" style="background:rgba(0, 0, 0, 0.15); border:1px solid var(--border-white); border-radius:12px; padding:16px; min-height: 520px;">
+        <!-- FullCalendar se renderiza aquí -->
       </div>
     </div>
-
-    <div class="sidebar-section">
-      <div class="sidebar-title">Audit log</div>
-      <div id="audit-container">
-        <div style="font-size:12px;color:rgba(255,255,255,0.2);text-align:center;padding:20px 0">
-          Sin acciones registradas
-        </div>
-      </div>
+    <div style="width:320px;" id="calendar-form-container">
+      <h3 style="margin-bottom:16px; font-weight:700;">Programar Turno</h3>
+      <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:6px">Ingeniero de Guardia</label>
+      <select id="cal-user-select" class="login-input" style="color:white; color-scheme: dark;">
+        <option value="">Cargando usuarios...</option>
+      </select>
+      <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:6px">Teléfono (Twilio / E.164)</label>
+      <input type="text" id="cal-phone" class="login-input" placeholder="+123456789">
+      <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:6px">Inicio del Turno</label>
+      <input type="datetime-local" id="cal-start" class="login-input" style="color:white; color-scheme: dark;">
+      <label style="font-size:11px;color:var(--text-muted);font-weight:600;display:block;margin-bottom:6px">Fin del Turno</label>
+      <input type="datetime-local" id="cal-end" class="login-input" style="color:white; color-scheme: dark;">
+      <button class="login-btn" onclick="addShift()">Agendar Guardia</button>
     </div>
   </div>
 </div>
+
+<div id="tab-users" class="tab-content admin-panel">
+  <div style="display:flex; gap: 32px;">
+    <div style="flex:1;">
+      <h3 style="margin-bottom:16px; font-weight:800; letter-spacing:-0.01em; color:#a78bfa;">Usuarios Autorizados</h3>
+      <div style="background:rgba(0, 0, 0, 0.15); border:1px solid var(--border-white); border-radius:12px; padding:16px;">
+        <table class="table">
+          <thead><tr><th>Email</th><th>Tenant</th><th>Rol</th><th>Acciones</th></tr></thead>
+          <tbody id="users-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div style="width:320px;">
+      <h3 style="margin-bottom:16px; font-weight:700;">Invitar Usuario</h3>
+      <input type="email" id="u-email" class="login-input" placeholder="Email">
+      <input type="password" id="u-pass" class="login-input" placeholder="Contraseña temporal">
+      <select id="u-role" class="login-input" style="color:white; color-scheme: dark;">
+        <option value="admin">Administrador</option>
+        <option value="operator">Operador (Solo lectura)</option>
+      </select>
+      <button class="login-btn" onclick="addUser()">Crear Cuenta</button>
+    </div>
+  </div>
+</div>
+
 </div> <!-- END DASHBOARD VIEW -->
 
 <script>
@@ -477,11 +1047,55 @@
     window.location.reload();
   }
 
-  // Ejecutado tras un login exitoso
+  // FullCalendar instance
+  let fcCalendar = null;
+
+  // Tabs
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+
+    if (tabId === 'tab-calendar') {
+      if (!fcCalendar) initFullCalendar();
+      else fcCalendar.render();
+      loadCalendar();
+    }
+    if (tabId === 'tab-users') loadUsers();
+  }
+
+  function parseJwt (token) {
+    try {
+      return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) { return null; }
+  }
+
+  // INCIDENT PIPELINE STORE
+  const incidents = new Map(); // alertId -> incident object
+
   function initApp() {
+    const payload = parseJwt(authToken);
+    if (payload && payload.role === 'admin') {
+      document.getElementById('tab-btn-users').style.display = 'block';
+    } else {
+      document.getElementById('calendar-form-container').style.display = 'none';
+    }
+
     const headers = { 'Authorization': `Bearer ${authToken}` };
 
-    // Filtro de tenant activo
+    // Precargar lista de usuarios
+    if (payload.role === 'admin') {
+      fetch(`/api/users`, { headers }).then(r => r.json()).then(users => {
+        const sel = document.getElementById('cal-user-select');
+        sel.innerHTML = '<option value="">Selecciona un usuario...</option>';
+        users.forEach(u => {
+          sel.innerHTML += `<option value="${u.email}">${u.email} (${u.role})</option>`;
+        });
+      }).catch(() => {});
+    }
+
+    // Cargar Tenants
     fetch('/api/tenants', { headers }).then(r => {
       if(r.status === 401 || r.status === 403) return performLogout();
       return r.json();
@@ -490,12 +1104,21 @@
       const cont = document.getElementById('tenants-container');
       cont.innerHTML = '';
       tenants.forEach(t => {
-        sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
-        cont.innerHTML += `<div class="tenant-card"><div class="tenant-name">${t.name}</div><div class="tenant-meta">${t.providers.join(' + ')} · Confianza mín: ${(t.minConfidence*100).toFixed(0)}%</div></div>`;
+        const optExists = Array.from(sel.options).some(opt => opt.value === t.id);
+        if (!optExists) {
+          sel.innerHTML += `<option value="${t.id}">${t.name}</option>`;
+        }
+        cont.innerHTML += `
+          <div class="tenant-card">
+            <div class="tenant-name">${t.name}</div>
+            <div class="tenant-meta">
+              ${t.providers.join(' + ')} · Confianza mín: ${(t.minConfidence*100).toFixed(0)}%
+            </div>
+          </div>`;
       });
     }).catch(() => {});
 
-    // Inicializar Socket.IO con auth token
+    // Conectar Socket.IO
     const socket = io({ auth: { token: authToken } });
 
     socket.on('connect_error', (err) => {
@@ -503,13 +1126,14 @@
     });
 
     socket.on('connect', () => {
-      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#00ffa3;box-shadow:0 0 8px #00ffa3;animation:pulse 2s infinite';
+      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:var(--neon-green);box-shadow:0 0 10px var(--neon-green);animation:pulse 2s infinite';
       document.getElementById('conn-status').textContent = 'Conectado';
 
-      // Cargar audit log persistido del servidor
+      // Cargar audit log histórico
       fetch('/api/audit', { headers }).then(r => r.json()).then(entries => {
         const summary = document.getElementById('audit-container');
         if (entries.length > 0 && summary) {
+          summary.innerHTML = '';
           entries.slice(-20).forEach(e => {
             const icon = e.type === 'action' ? (e.success ? '✅' : '❌') : e.type === 'escalation' ? '📲' : '🚫';
             addAudit(icon, `[histórico] ${e.label} — ${e.service}`);
@@ -519,17 +1143,17 @@
     });
 
     socket.on('disconnect', () => {
-      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:#ff4444;box-shadow:0 0 8px #ff4444';
+      document.getElementById('conn-dot').style.cssText = 'width:8px;height:8px;border-radius:50%;background:var(--neon-red);box-shadow:0 0 8px var(--neon-red)';
       document.getElementById('conn-status').textContent = 'Desconectado';
     });
 
     socket.on('history', (events) => {
-      events.forEach(e => addEvent(e));
+      // Re-armar incidentes del historial
+      events.forEach(e => processPipelineEvent(e));
     });
 
     socket.on('pipeline_event', (event) => {
-      allEvents.push(event);
-      if (activeTenant === 'all' || event.tenantId === activeTenant) addEvent(event);
+      processPipelineEvent(event);
     });
   }
 
@@ -539,97 +1163,395 @@
       new Date().toLocaleTimeString('es-ES', { hour12: false });
   }, 1000);
 
-  // Filtro de tenant activo
+  // Tenant Filter
   let activeTenant = 'all';
-  const allEvents = [];
-
   function filterByTenant() {
     activeTenant = document.getElementById('tenant-filter').value;
-    const container = document.getElementById('feed-container');
-    container.innerHTML = '';
-    const filtered = activeTenant === 'all' ? allEvents : allEvents.filter(e => e.tenantId === activeTenant);
-    if (filtered.length === 0) {
-      container.innerHTML = '<div class="empty"><div class="empty-icon">📡</div><div class="empty-text">Sin eventos para este tenant</div></div>';
-    } else {
-      filtered.slice(-50).forEach(e => { const card = document.createElement('div'); card.className = 'event-card'; card.innerHTML = buildCard(e); container.appendChild(card); });
+    renderIncidents();
+  }
+
+  // PIPELINE EVENT PROCESSOR
+  function processPipelineEvent(event) {
+    const timeStr = new Date(event.timestamp).toLocaleTimeString('es-ES', { hour12: false });
+    
+    if (event.type === 'alert') {
+      const alertData = event.data;
+      metrics.alerts++;
+      updateMetrics();
+      addAudit('🚨', `Alerta recibida: ${alertData.service} — ${alertData.message}`);
+
+      // Crear estructura de incidente
+      const costPerSec = alertData.service === 'api-gateway' ? 0.25 : alertData.service === 'auth-service' ? 0.15 : 0.08;
+      
+      const newIncident = {
+        alertId: alertData.id,
+        tenantId: event.tenantId,
+        service: alertData.service,
+        severity: alertData.severity,
+        message: alertData.message,
+        timestamp: alertData.receivedAt,
+        costPerSecond: costPerSec,
+        cost: 0,
+        stage: 1, // Stage 1 = Alert active
+        status: 'Investigando...',
+        diagnostic: null,
+        decision: null,
+        action: null,
+        escalation: null,
+        resolved: false,
+        timer: null
+      };
+
+      // Ticker para downtime cost
+      newIncident.timer = setInterval(() => {
+        if (!newIncident.resolved && !newIncident.escalation) {
+          newIncident.cost += (newIncident.costPerSecond * 0.1);
+          const costElem = document.getElementById(`cost-val-${newIncident.alertId}`);
+          if (costElem) {
+            costElem.textContent = `$${newIncident.cost.toFixed(2)}`;
+          }
+        }
+      }, 100);
+
+      incidents.set(alertData.id, newIncident);
+      renderIncidents();
+    }
+
+    else if (event.type === 'diagnostic') {
+      const report = event.data;
+      // Buscar incidente por ID de alerta
+      const inc = incidents.get(report.alert.id);
+      if (inc) {
+        inc.diagnostic = report;
+        inc.stage = 2; // Diagnostic ready
+        inc.status = 'Analizando Causa Raíz...';
+        addAudit('🔍', `Diagnóstico completado para: ${report.service.name} (${(report.confidence*100).toFixed(0)}% confianza)`);
+        renderIncidents();
+      }
+    }
+
+    else if (event.type === 'decision') {
+      const decision = event.data;
+      // Encontrar incidente para el mismo servicio que no tenga decisión
+      const inc = findActiveIncidentForService(event.tenantId, decision.params.service || 'api-gateway');
+      if (inc) {
+        inc.decision = decision;
+        inc.stage = 3; // Decision ready
+        
+        metrics.confidences.push(decision.confidence);
+        updateMetrics();
+
+        if (decision.escalate) {
+          inc.stage = 5;
+          inc.status = 'Escalado a On-Call';
+          if (inc.timer) { clearInterval(inc.timer); inc.timer = null; }
+          addAudit('📲', `IA decidió escalar: ${decision.escalationReason}`);
+        } else {
+          inc.status = `Ejecutando remediación: ${decision.actionName}`;
+          addAudit('🤖', `IA decide ejecutar: ${decision.actionName}`);
+        }
+        renderIncidents();
+      }
+    }
+
+    else if (event.type === 'action') {
+      const actionResult = event.data;
+      const inc = findActiveIncidentForService(event.tenantId, actionResult.tenantId === 'empresa-b' ? 'payments-db' : (actionResult.actionName === 'disable_feature_flag' ? 'api-gateway' : 'auth-service'));
+      if (inc) {
+        inc.action = actionResult;
+        
+        if (actionResult.success) {
+          inc.stage = 5; // Complete resolution
+          inc.resolved = true;
+          inc.status = 'Resuelto automáticamente';
+          metrics.resolved++;
+          updateMetrics();
+          addAudit('✅', `Remediación exitosa: ${actionResult.actionName}`);
+        } else {
+          inc.stage = 4;
+          inc.status = 'Remediación fallida - Escalando...';
+          addAudit('❌', `Remediación fallida: ${actionResult.actionName}`);
+        }
+
+        if (inc.timer) { clearInterval(inc.timer); inc.timer = null; }
+        renderIncidents();
+      }
+    }
+
+    else if (event.type === 'escalation') {
+      const esc = event.data;
+      const inc = findActiveIncidentForService(event.tenantId, esc.service);
+      if (inc) {
+        inc.escalation = esc;
+        inc.stage = 5; // Escalated state
+        inc.status = 'Escalado a On-Call';
+        metrics.escalated++;
+        updateMetrics();
+        
+        if (inc.timer) { clearInterval(inc.timer); inc.timer = null; }
+        addAudit('📲', `Escalado a on-call por: ${esc.reason}`);
+        renderIncidents();
+      }
     }
   }
 
-  // Botón demo
-  function triggerDemo() {
-    const btn = document.getElementById('btn-demo');
-    btn.textContent = '⏳ Disparando...';
-    btn.disabled = true;
-    fetch('/api/demo/trigger', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } })
-      .then(() => setTimeout(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; }, 2000))
-      .catch(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; });
+  function findActiveIncidentForService(tenantId, serviceName) {
+    for (const inc of incidents.values()) {
+      if (inc.tenantId === tenantId && inc.service === serviceName && !inc.resolved && !inc.escalation) {
+        return inc;
+      }
+    }
+    // Fallback: retornar el último incidente de ese servicio
+    const sorted = Array.from(incidents.values()).filter(i => i.service === serviceName);
+    return sorted[sorted.length - 1];
   }
 
-  // Botón RCA
-  function triggerRCA() {
-    const serviceName = prompt("Ingrese el nombre del servicio para generar el RCA (ej. api-gateway):");
-    if (!serviceName) return;
-    const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a):") : activeTenant;
-    if (!tenantId) return;
+  // RENDER DYNAMIC INCIDENT PIPELINE
+  function renderIncidents() {
+    const container = document.getElementById('feed-container');
+    const filtered = Array.from(incidents.values()).filter(inc => {
+      return activeTenant === 'all' || inc.tenantId === activeTenant;
+    });
 
-    const btn = document.getElementById('btn-rca');
-    btn.textContent = '⏳ Generando...';
-    btn.disabled = true;
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📡</div>
+          <div class="empty-text">
+            No hay incidentes activos en este momento.<br>
+            <span style="font-size: 12px; opacity: 0.7; display: block; margin-top: 8px;">Haz clic en <strong>Simular incidente</strong> para ver el motor en acción.</span>
+          </div>
+        </div>`;
+      return;
+    }
 
-    fetch(`/api/tenants/${tenantId}/services/${serviceName}/post-mortem`, { 
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${authToken}` }
-    })
-      .then(r => r.json())
-      .then(res => {
-         btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false;
-         if (res.markdown) {
-           alert("Post-Mortem Generado:\\n\\n" + res.markdown.substring(0, 500) + "...\\n\\n(Revisa la consola para ver el Markdown completo)");
-           console.log("\\n=== POST-MORTEM GENERADO ===\\n" + res.markdown + "\\n===========================\\n");
-         } else {
-           alert("Error: " + (res.error || "No se pudo generar"));
-         }
-      })
-      .catch((e) => { 
-        alert("Error de conexión");
-        btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false; 
-      });
-  }
+    container.innerHTML = '';
+    
+    // Mostrar del más nuevo al más viejo
+    filtered.slice().reverse().forEach(inc => {
+      const card = document.createElement('div');
+      card.className = `incident-card ${inc.resolved ? 'resolved' : ''} ${inc.escalation || (inc.decision && inc.decision.escalate) ? 'escalated' : ''}`;
+      
+      const timeStr = new Date(inc.timestamp).toLocaleTimeString('es-ES', { hour12: false });
+      
+      // Construir detalles de los nodos del pipeline
+      const s1 = 'completed'; // Alerta siempre completado
+      const s2 = inc.stage >= 2 ? 'completed' : (inc.stage === 1 ? 'active' : 'pending');
+      const s3 = inc.stage >= 3 ? (inc.decision.escalate ? 'failed' : 'completed') : (inc.stage === 2 ? 'active' : 'pending');
+      const s4 = inc.action ? (inc.action.success ? 'completed' : 'failed') : (inc.stage === 3 && !inc.decision.escalate ? 'active' : 'pending');
+      
+      let s5 = 'pending';
+      if (inc.resolved) s5 = 'completed';
+      if (inc.escalation || (inc.decision && inc.decision.escalate) || (inc.action && !inc.action.success)) s5 = 'failed';
 
-  // Gestión de Guardias
-  function manageOnCall() {
-    const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a) para ver su calendario de guardias:") : activeTenant;
-    if (!tenantId) return;
+      // Connectores status
+      const c1 = s2 === 'completed' ? 'completed' : 'active';
+      const c2 = s3 === 'completed' ? 'completed' : (s3 === 'failed' ? 'failed' : (s2 === 'completed' ? 'active' : 'pending'));
+      const c3 = s4 === 'completed' ? 'completed' : (s4 === 'failed' ? 'failed' : (s3 === 'completed' ? 'active' : 'pending'));
+      const c4 = s5 === 'completed' ? 'completed' : (s5 === 'failed' ? 'failed' : (s4 === 'completed' ? 'active' : 'pending'));
 
-    fetch(`/api/tenants/${tenantId}/oncall`, { headers: { 'Authorization': `Bearer ${authToken}` } })
-      .then(r => r.json())
-      .then(schedule => {
-        let text = `Calendario de Guardias para ${tenantId}:\\n\\n`;
-        if (schedule.length === 0) text += "No hay turnos programados.\\n";
-        else schedule.forEach(s => text += `- ${s.engineerName} (${s.phoneNumber}) | Activo: ${s.isActive}\\n`);
-        
-        text += "\\n¿Deseas agregar un nuevo turno de guardia AHORA MISMO? (Aceptar = Sí, Cancelar = No)";
-        if (confirm(text)) {
-          const name = prompt("Nombre del Ingeniero:");
-          const phone = prompt("Teléfono (formato E.164, ej: +123456789):");
-          if (name && phone) {
-            const start = new Date().toISOString();
-            const end = new Date(Date.now() + 86400000).toISOString(); // 24h
-            fetch(`/api/tenants/${tenantId}/oncall`, {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
-              },
-              body: JSON.stringify({ engineerName: name, phoneNumber: phone, shiftStart: start, shiftEnd: end, isActive: true })
-            }).then(() => alert("¡Turno guardado con éxito! BastionGuard le llamará por Twilio si hay una emergencia."))
-              .catch(() => alert("Error al guardar turno."));
-          }
+      // RCA Section content
+      let rcaHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0">Esperando diagnóstico...</div>`;
+      if (inc.diagnostic) {
+        const diag = inc.diagnostic;
+        const confColor = diag.confidence > 0.7 ? 'var(--neon-green)' : diag.confidence > 0.5 ? '#ffd93d' : 'var(--neon-red)';
+        rcaHtml = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <span style="font-weight:700; color:var(--text-main); font-size:12px">Causa Raíz Detectada</span>
+            <span style="color:${confColor}; font-weight:700; font-size:12px">${(diag.confidence*100).toFixed(0)}% Confianza</span>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); padding:10px 14px; border-radius:6px; font-size:12px; line-height:1.4; border-left:3px solid ${confColor}">
+            ${diag.possibleCauses.map(c => `<div>• ${c}</div>`).join('')}
+          </div>
+          <div style="margin-top:10px; font-size:10px; color:var(--text-muted)">
+            Procesado por: <strong>Neural RCA Engine</strong> · Calidad de datos: <strong>${diag.dataQuality.toUpperCase()}</strong>
+          </div>
+        `;
+      }
+
+      // Blast Radius Section content
+      let blastHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0">Esperando mapeo de dependencias...</div>`;
+      if (inc.diagnostic) {
+        if (inc.service === 'api-gateway') {
+          blastHtml = `
+            <div class="blast-radius-box">
+              <div class="blast-node root">api-gateway (Degradado)</div>
+              <div class="blast-connector-line"></div>
+              <div class="blast-connector-fork">
+                <div style="display:flex; flex-direction:column; align-items:center">
+                  <div class="blast-node impacted">auth-service (Impactado)</div>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center">
+                  <div class="blast-node critico">payments-db (Crítico)</div>
+                </div>
+              </div>
+            </div>`;
+        } else if (inc.service === 'auth-service') {
+          blastHtml = `
+            <div class="blast-radius-box">
+              <div class="blast-node root">auth-service (Caído)</div>
+              <div class="blast-connector-line"></div>
+              <div class="blast-node critico">payments-db (Ok - Sin Auth)</div>
+            </div>`;
+        } else {
+          blastHtml = `
+            <div class="blast-radius-box">
+              <div class="blast-node root">${inc.service} (Alarmando)</div>
+            </div>`;
         }
-      });
+      }
+
+      // AI Decision Section content
+      let decisionHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0">Esperando decisión de IA Agent...</div>`;
+      if (inc.decision) {
+        const dec = inc.decision;
+        decisionHtml = `
+          <div class="reasoning-bubble">
+            "${dec.reasoning}"
+          </div>
+          <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center">
+            <span style="font-size:11px; color:var(--text-muted)">
+              Acción: <strong style="color:var(--neon-cyan)">${dec.escalate ? 'ESCALAR ON-CALL' : dec.actionName}</strong>
+            </span>
+            <span class="badge ${dec.escalate ? 'badge-escalation' : 'badge-success'}">${dec.escalate ? 'manual' : 'auto'}</span>
+          </div>`;
+      }
+
+      // Execution result content
+      let executionHtml = `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:12px 0">Esperando ejecución...</div>`;
+      if (inc.action) {
+        const act = inc.action;
+        executionHtml = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <span style="font-weight:700; font-size:12px">Resultado de la Operación</span>
+            <span class="badge ${act.success ? 'badge-success' : 'badge-critical'}">${act.success ? 'EXITOSO' : 'FALLIDO'}</span>
+          </div>
+          <div style="background:rgba(0,0,0,0.3); padding:10px 12px; border-radius:6px; font-family:var(--font-mono); font-size:11px; color:var(--text-muted)">
+            ${act.details || act.error}
+          </div>
+          <div style="margin-top:8px; font-size:10px; color:var(--text-muted)">
+            Modo: <strong>${act.dryRun ? 'DRY-RUN (Simulación)' : 'PRODUCCIÓN'}</strong>
+          </div>
+        `;
+      } else if (inc.escalation || (inc.decision && inc.decision.escalate)) {
+        const reason = inc.escalation ? inc.escalation.reason : inc.decision.escalationReason;
+        executionHtml = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+            <span style="font-weight:700; font-size:12px; color:var(--neon-red)">Alerta Escalada</span>
+            <span class="badge badge-escalation">ON-CALL</span>
+          </div>
+          <div style="background:rgba(255, 71, 126, 0.04); border: 1px solid rgba(255, 71, 126, 0.15); padding:10px 12px; border-radius:6px; font-size:12px; color:#ffb3c6">
+            Llamada telefónica Twilio disparada a ingeniero de guardia. Motivo: "${reason}"
+          </div>
+        `;
+      }
+
+      // Feedback block content
+      let feedbackHtml = '';
+      if (inc.resolved) {
+        feedbackHtml = `
+          <div class="feedback-box" id="feedback-panel-${inc.alertId}">
+            <div class="feedback-prompt">🤝 ¿BastionGuard resolvió el incidente correctamente?</div>
+            <div class="feedback-actions">
+              <button class="btn-feedback" onclick="sendFeedback('${inc.alertId}', true)">👍 Sí, perfecto</button>
+              <button class="btn-feedback" onclick="sendFeedback('${inc.alertId}', false)">👎 No, requirió ajuste</button>
+            </div>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="incident-header">
+          <div class="incident-meta">
+            <div class="incident-title">
+              <span>🚨 ${inc.service}</span>
+              <span class="badge badge-${inc.severity}">${inc.severity}</span>
+            </div>
+            <div class="incident-subtitle">
+              ID: ${inc.alertId.slice(0, 8)} · Detectado a las ${timeStr} · Estado: <strong style="color:var(--neon-cyan)">${inc.status}</strong>
+            </div>
+          </div>
+          
+          <div class="downtime-cost-box">
+            <div class="cost-label">Costo por Downtime</div>
+            <div class="cost-value" id="cost-val-${inc.alertId}">$${inc.cost.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom:16px; font-size:13px; background:rgba(255,255,255,0.02); padding:10px 14px; border-radius:8px; border:1px solid rgba(255,255,255,0.03)">
+          <strong>Detalle de Alerta:</strong> ${inc.message}
+        </div>
+
+        <!-- PIPELINE FLOW CHART -->
+        <div class="pipeline-flow">
+          <div class="flow-step completed">
+            <div class="step-circle completed">🚨</div>
+            <div class="step-label">Alerta</div>
+          </div>
+          <div class="flow-connector ${c1}"></div>
+          <div class="flow-step ${s2}">
+            <div class="step-circle ${s2}">🔍</div>
+            <div class="step-label">Neural RCA</div>
+          </div>
+          <div class="flow-connector ${c2}"></div>
+          <div class="flow-step ${s3}">
+            <div class="step-circle ${s3}">🤖</div>
+            <div class="step-label">Decisión IA</div>
+          </div>
+          <div class="flow-connector ${c3}"></div>
+          <div class="flow-step ${s4}">
+            <div class="step-circle ${s4}">⚙️</div>
+            <div class="step-label">Ejecución</div>
+          </div>
+          <div class="flow-connector ${c4}"></div>
+          <div class="flow-step ${s5}">
+            <div class="step-circle ${s5}">📲</div>
+            <div class="step-label">Resolución</div>
+          </div>
+        </div>
+
+        <!-- DETAILS COLLAPSIBLE EXPANSIONS -->
+        <div class="incident-details-grid">
+          <div class="details-panel">
+            <div class="panel-title">🧠 Diagnóstico Neural RCA™</div>
+            ${rcaHtml}
+          </div>
+          <div class="details-panel">
+            <div class="panel-title">🧪 Grafo de Dependencias ("Blast Radius")</div>
+            ${blastHtml}
+          </div>
+        </div>
+
+        <div class="incident-details-grid" style="margin-top: 16px;">
+          <div class="details-panel">
+            <div class="panel-title">🤖 Decisión de Auto-Remediación</div>
+            ${decisionHtml}
+          </div>
+          <div class="details-panel">
+            <div class="panel-title">⚙️ Logs de Ejecución</div>
+            ${executionHtml}
+          </div>
+        </div>
+
+        ${feedbackHtml}
+      `;
+      
+      container.appendChild(card);
+    });
   }
 
-  // Metrics state
+  // Feedback loop trigger
+  function sendFeedback(alertId, wasCorrect) {
+    const panel = document.getElementById(`feedback-panel-${alertId}`);
+    if (panel) {
+      panel.innerHTML = `
+        <div style="font-size: 13px; color: var(--neon-green); font-weight: 600; width:100%; text-align:center; padding: 4px 0;">
+          🎉 ¡Gracias! Tu feedback ha sido enviado al RCAEngine para re-calibrar las heurísticas cognitivas en futuros incidentes.
+        </div>`;
+    }
+  }
+
+  // Metrics update
   const metrics = { alerts: 0, resolved: 0, escalated: 0, confidences: [] };
 
   function updateMetrics() {
@@ -642,12 +1564,12 @@
     }
   }
 
-  // Audit log
+  // Audit Log
   const auditItems = [];
 
   function addAudit(icon, text) {
     auditItems.unshift({ icon, text, time: new Date().toLocaleTimeString('es-ES', { hour12: false }) });
-    if (auditItems.length > 20) auditItems.pop();
+    if (auditItems.length > 25) auditItems.pop();
     renderAudit();
   }
 
@@ -664,134 +1586,176 @@
     `).join('');
   }
 
-  // Feed
-  function addEvent(event) {
-    const container = document.getElementById('feed-container');
-
-    // Quitar empty state
-    const empty = container.querySelector('.empty');
-    if (empty) empty.remove();
-
-    const card = document.createElement('div');
-    card.className = 'event-card';
-    card.innerHTML = buildCard(event);
-    container.insertBefore(card, container.firstChild);
-
-    // Limitar a 50 cards
-    const cards = container.querySelectorAll('.event-card');
-    if (cards.length > 50) cards[cards.length - 1].remove();
+  // Demo simulation endpoint trigger
+  function triggerDemo() {
+    const btn = document.getElementById('btn-demo');
+    btn.textContent = '⏳ Disparando...';
+    btn.disabled = true;
+    fetch('/api/demo/trigger', { method: 'POST', headers: { 'Authorization': `Bearer ${authToken}` } })
+      .then(() => setTimeout(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; }, 2000))
+      .catch(() => { btn.textContent = '⚡ Simular incidente'; btn.disabled = false; });
   }
 
-  function buildCard(event) {
-    const time = new Date(event.timestamp).toLocaleTimeString('es-ES', { hour12: false });
+  // RCA Post-Mortem IA display
+  function triggerRCA() {
+    const serviceName = prompt("Ingrese el nombre del servicio para generar el RCA (ej. api-gateway o auth-service):");
+    if (!serviceName) return;
+    const tenantId = activeTenant === 'all' ? prompt("Ingrese el ID del tenant (ej. empresa-a):") : activeTenant;
+    if (!tenantId) return;
 
-    if (event.type === 'alert') {
-      const a = event.data;
-      const sevClass = `badge-${a.severity}`;
-      metrics.alerts++;
-      updateMetrics();
-      addAudit('🚨', `Alerta recibida: ${a.service} — ${a.message}`);
-      return `
-        <div class="event-header">
-          <div class="event-type" style="color:#00c3ff">🚨 Alerta entrante</div>
-          <span class="event-time">${time}</span>
-        </div>
-        <div class="event-body">
-          <span class="event-service">${a.service}</span>
-          <span class="badge ${sevClass}" style="margin-left:8px">${a.severity}</span>
-          <div style="margin-top:8px;color:rgba(255,255,255,0.6)">${a.message}</div>
-          <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.3)">Fuente: ${a.source} · ID: ${a.id.slice(0,8)}</div>
-        </div>`;
-    }
+    const btn = document.getElementById('btn-rca');
+    btn.textContent = '⏳ Generando...';
+    btn.disabled = true;
 
-    if (event.type === 'diagnostic') {
-      const r = event.data;
-      const confColor = r.confidence > 0.7 ? '#00ffa3' : r.confidence > 0.5 ? '#ffd93d' : '#ff6b6b';
-      addAudit('📋', `Diagnóstico: ${r.possibleCauses.length} causa(s) — confianza ${(r.confidence*100).toFixed(0)}%`);
-      return `
-        <div class="event-header">
-          <div class="event-type" style="color:#ffd93d">📋 Diagnóstico</div>
-          <span class="event-time">${time}</span>
-        </div>
-        <div class="event-body">
-          <span class="event-service">${r.service.name}</span>
-          <span style="margin-left:8px;font-size:12px;color:rgba(255,255,255,0.4)">
-            Réplicas: ${r.service.replicas.ready}/${r.service.replicas.desired}
-            ${r.service.recentDeploy ? ' · ⚠️ Deploy reciente' : ''}
-          </span>
-          <div class="causes">
-            ${r.possibleCauses.map(c => `<div class="cause-item">${c}</div>`).join('')}
-          </div>
-          <div style="margin-top:8px;font-size:11px;color:${confColor}">
-            Confianza: ${(r.confidence*100).toFixed(0)}%
-          </div>
-          <div class="confidence-bar">
-            <div class="confidence-fill" style="width:${r.confidence*100}%;background:${confColor}"></div>
-          </div>
-        </div>`;
-    }
-
-    if (event.type === 'decision') {
-      const d = event.data;
-      metrics.confidences.push(d.confidence);
-      updateMetrics();
-      const actColor = d.escalate ? '#ff6b6b' : '#00ffa3';
-      addAudit('🤖', `IA decide: ${d.shouldAct ? d.actionName : 'escalar'}`);
-      return `
-        <div class="event-header">
-          <div class="event-type" style="color:#a78bfa">🤖 Decisión IA</div>
-          <span class="event-time">${time}</span>
-        </div>
-        <div class="event-body">
-          <span style="color:${actColor};font-weight:600">
-            ${d.escalate ? '📲 Escalar a on-call' : `⚙️ Ejecutar: ${d.actionName}`}
-          </span>
-          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5);font-style:italic">
-            "${d.reasoning}"
-          </div>
-          <div style="margin-top:6px;font-size:11px;color:rgba(255,255,255,0.3)">
-            Confianza: ${(d.confidence*100).toFixed(0)}%
-          </div>
-        </div>`;
-    }
-
-    if (event.type === 'action') {
-      const r = event.data;
-      if (r.success) { metrics.resolved++; updateMetrics(); }
-      addAudit(r.success ? '✅' : '❌', `${r.actionName}: ${r.success ? 'exitoso' : 'fallido'}`);
-      return `
-        <div class="event-header">
-          <div class="event-type" style="color:${r.success ? '#00ffa3' : '#ff6b6b'}">
-            ${r.success ? '✅' : '❌'} ${r.dryRun ? '[DRY-RUN]' : ''} Acción ejecutada
-          </div>
-          <span class="event-time">${time}</span>
-        </div>
-        <div class="event-body">
-          <span class="badge ${r.success ? 'badge-success' : 'badge-critical'}">${r.actionName}</span>
-          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5)">${r.details}</div>
-        </div>`;
-    }
-
-    if (event.type === 'escalation') {
-      const e = event.data;
-      metrics.escalated++; updateMetrics();
-      addAudit('📲', `Escalado: ${e.service} — ${e.reason}`);
-      return `
-        <div class="event-header">
-          <div class="event-type" style="color:#ff6b6b">📲 Escalado a on-call</div>
-          <span class="event-time">${time}</span>
-        </div>
-        <div class="event-body">
-          <span class="event-service">${e.service}</span>
-          <span class="badge badge-escalation" style="margin-left:8px">escalado</span>
-          <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,0.5)">${e.reason}</div>
-        </div>`;
-    }
-
-    return '';
+    fetch(`/api/tenants/${tenantId}/services/${serviceName}/post-mortem`, { 
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    })
+    .then(r => r.json())
+    .then(res => {
+       btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false;
+       if (res.markdown) {
+         showRCAModal(res.markdown);
+       } else {
+         alert("Error: " + (res.error || "No se pudo generar"));
+       }
+    })
+    .catch((e) => { 
+      alert("Error de conexión");
+      btn.textContent = '📝 Generar RCA (IA)'; btn.disabled = false; 
+    });
   }
 
-  // Init
+  // MODAL LOGIC FOR POST MORTEM
+  function showRCAModal(markdown) {
+    const overlay = document.getElementById('rca-modal');
+    const body = document.getElementById('rca-modal-body');
+    
+    // Parser simple de markdown a HTML para visualizar el PostMortem
+    let html = markdown
+      .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+      .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+      .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+      .replace(/^\- (.*$)/gim, '<li>$1</li>')
+      .replace(/`(.*?)`/g, '<code>$1</code>')
+      .replace(/\n/g, '<br>');
+      
+    // Envolver lists
+    html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+    
+    body.innerHTML = html;
+    overlay.style.display = 'flex';
+  }
+
+  function closeRCAModal() {
+    document.getElementById('rca-modal').style.display = 'none';
+  }
+
+  // CALENDAR
+  function initFullCalendar() {
+    const calendarEl = document.getElementById('calendar-grid');
+    fcCalendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'timeGridWeek',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      slotMinTime: '00:00:00',
+      slotMaxTime: '24:00:00',
+      allDaySlot: false,
+      locale: 'es',
+      themeSystem: 'standard',
+      events: []
+    });
+    fcCalendar.render();
+  }
+
+  function loadCalendar() {
+    fetch(`/api/tenants/${activeTenant === 'all' ? 'empresa-a' : activeTenant}/oncall`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+      .then(r => r.json())
+      .then(schedule => {
+        if (!fcCalendar) return;
+        fcCalendar.removeAllEvents();
+        if (schedule && schedule.length > 0) {
+          schedule.forEach(s => {
+            fcCalendar.addEvent({
+              title: `${s.engineerName} 📞 ${s.phoneNumber}`,
+              start: s.shiftStart,
+              end: s.shiftEnd,
+              backgroundColor: s.isActive ? 'var(--neon-green)' : 'var(--neon-red)',
+              textColor: 'var(--text-dark)',
+              borderColor: 'transparent'
+            });
+          });
+        }
+      });
+  }
+
+  function addShift() {
+    const email = document.getElementById('cal-user-select').value;
+    const phone = document.getElementById('cal-phone').value;
+    const start = document.getElementById('cal-start').value;
+    const end = document.getElementById('cal-end').value;
+    
+    if (!email || !phone || !start || !end) return alert("Completa todos los campos");
+
+    fetch(`/api/tenants/${activeTenant === 'all' ? 'empresa-a' : activeTenant}/oncall`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify({ engineerName: email, phoneNumber: phone, shiftStart: new Date(start).toISOString(), shiftEnd: new Date(end).toISOString(), isActive: true })
+    }).then((r) => {
+      if(r.status === 403) return alert("No tienes permisos de Administrador.");
+      alert("Turno guardado en el calendario visual");
+      loadCalendar();
+    }).catch(() => alert("Error al guardar el turno."));
+  }
+
+  // USER MANAGEMENT
+  function loadUsers() {
+    fetch(`/api/users`, { headers: { 'Authorization': `Bearer ${authToken}` } })
+      .then(r => r.json())
+      .then(users => {
+        document.getElementById('users-table-body').innerHTML = users.map(u => `
+          <tr>
+            <td>${u.email}</td>
+            <td>${u.tenantId}</td>
+            <td><span class="badge ${u.role === 'admin' ? 'badge-success' : 'badge-medium'}">${u.role}</span></td>
+            <td>
+              ${u.email !== 'admin@bastionguard.com' ? `<button class="btn-danger" onclick="deleteUser('${u.id}')">Eliminar</button>` : '-'}
+            </td>
+          </tr>
+        `).join('');
+      });
+  }
+
+  function addUser() {
+    const email = document.getElementById('u-email').value;
+    const pass = document.getElementById('u-pass').value;
+    const role = document.getElementById('u-role').value;
+    
+    if (!email || !pass) return alert("Completa todos los campos");
+
+    fetch(`/api/users`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+      body: JSON.stringify({ email, password: pass, role, tenantId: activeTenant === 'all' ? 'all' : activeTenant })
+    }).then((r) => {
+      if(r.status === 403) return alert("No tienes permisos de Administrador.");
+      alert("Usuario creado");
+      loadUsers();
+    }).catch(() => alert("Error al crear usuario"));
+  }
+
+  function deleteUser(id) {
+    if(!confirm("¿Seguro que deseas eliminar este usuario?")) return;
+    fetch(`/api/users/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${authToken}` }
+    }).then(() => loadUsers());
+  }
+
+  // Init auth check
   checkAuth();
 </script>
 </body>

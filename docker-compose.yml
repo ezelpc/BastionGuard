@@ -11,6 +11,8 @@ services:
       NODE_ENV: development
       DEBUG: bastionguard:*
       LOG_LEVEL: debug
+      DATABASE_URL: postgresql://bastionguard:dev-password@postgres:5432/bastionguard_dev
+      REDIS_URL: redis://redis:6379
     volumes:
       - .:/workspace
       - /workspace/node_modules
@@ -23,6 +25,17 @@ services:
       - "9090:9090"
     networks:
       - bastionguard-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     stdin_open: true
     tty: true
     command: /bin/bash

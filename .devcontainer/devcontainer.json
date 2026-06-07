@@ -1,11 +1,11 @@
 {
   "name": "BastionGuard DevSecOps",
-  "dockerFile": "Dockerfile",
-  "build": {
-    "dockerfile": "Dockerfile",
-    "context": ".",
-    "args": {}
-  },
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "docker-compose.override.yml"
+  ],
+  "service": "bastionguard",
+  "workspaceFolder": "/workspace",
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {
       "version": "latest",
@@ -54,6 +54,7 @@
     }
   },
   "postCreateCommand": "bash .devcontainer/post-create-command.sh",
+  "postStartCommand": "docker compose up -d postgres redis",
   "forwardPorts": [3000, 8080, 9090, 5432, 6379],
   "portsAttributes": {
     "3000": {
