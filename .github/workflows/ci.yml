@@ -13,7 +13,6 @@ jobs:
   ci:
     name: Build, Lint & Test
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,7 +24,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Type check
         run: npm run type-check
@@ -48,7 +47,6 @@ jobs:
   security:
     name: DevSecOps Security Gates
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -62,7 +60,7 @@ jobs:
           cache: "npm"
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Dependency audit
         run: npm audit --audit-level=high
@@ -78,7 +76,7 @@ jobs:
           config: p/ci
 
       - name: Filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           scan-type: fs
           scan-ref: .
